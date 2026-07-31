@@ -214,6 +214,20 @@
   .adm-item .who{flex:1;text-transform:uppercase;font-weight:800;}
   .adm-item .when{color:var(--dim);font-size:11px;}
   .adm-empty{color:var(--dim);font-size:12px;padding:8px;letter-spacing:.08em;}
+
+  /* missions */
+  .msn{display:flex;align-items:center;gap:14px;padding:14px 15px;border:1px solid var(--line);border-radius:3px;background:rgba(255,255,255,.02);text-align:left;}
+  .msn.done{border-color:rgba(34,255,136,.35);background:rgba(34,255,136,.05);}
+  .msn .mi{flex:1;min-width:0;}
+  .msn .mname{font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:14px;}
+  .msn.done .mname{color:#22ff88;}
+  .msn .mdesc{color:var(--dim);font-size:11px;letter-spacing:.04em;margin-top:3px;}
+  .msn .bar{margin-top:8px;height:7px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
+  .msn .fill{height:100%;background:linear-gradient(90deg,#22e6ff,#7a5cff);border-radius:3px;transition:width .3s;}
+  .msn.done .fill{background:linear-gradient(90deg,#22ff88,#8cffb0);}
+  .msn .mnum{color:var(--dim);font-size:10px;letter-spacing:.1em;margin-top:5px;}
+  .msn .mrew{text-align:right;flex:0 0 auto;}
+  .msn .mtick{font-size:22px;color:#22ff88;}
   .adm-note{margin-top:10px;color:var(--dim);font-size:10px;letter-spacing:.1em;line-height:1.8;}
   #adminMsg{margin-top:10px;font-size:12px;letter-spacing:.1em;color:var(--cyan);min-height:16px;}
   #admPass{width:230px;text-align:center;letter-spacing:.2em;}
@@ -239,12 +253,24 @@
       <button class="link-btn" id="levelsBtn">Levels</button>
       <span class="seltag"><b id="selLevelName">PULSE</b></span>
       <button class="link-btn" id="shopBtn">Shop</button>
+      <button class="link-btn" id="missionBtn">Missions</button>
+    </div>
+    <div class="menu-sub" style="margin-top:10px">
+      <button class="link-btn" id="sfxBtn" style="font-size:11px">SFX: ON</button>
+      <button class="link-btn" id="musBtn" style="font-size:11px">Music: ON</button>
     </div>
     <div class="blink">Fill the boost meter mid-run to take flight</div>
     <div class="seltag" style="margin-top:14px;position:relative;z-index:3">Player <b id="menuName">—</b> · <button class="link-btn" id="menuChangeName" style="font-size:11px;letter-spacing:.14em">Change</button></div>
   </div>
   <div class="keys">&larr; &rarr; / <span>A D</span> move &nbsp;&middot;&nbsp; <span>SPACE</span> / &uarr; jump &nbsp;&middot;&nbsp; <span>&darr;</span> / S slide &nbsp;&middot;&nbsp; <span>F</span> / tap meter to fly</div>
   <div class="board" id="menuBoard"></div>
+</div>
+
+<!-- ===== DAILY MISSIONS ===== -->
+<div class="screen hidden" id="missionScreen">
+  <div class="panel-head"><div class="ttl">Daily Missions</div><button class="btn ghost sm" id="msnBack">Back</button></div>
+  <div class="list" id="msnList"></div>
+  <div class="note" id="msnReset">Everyone gets the same three missions each day</div>
 </div>
 
 <!-- ===== SET NAME (required before playing) ===== -->
@@ -613,7 +639,7 @@ function sanitiseSave(){
   if(save.name&&save.names.indexOf(save.name)<0) save.names.push(save.name);
   if(save.names.length>12) save.names=save.names.slice(-12);
 }
-let save={coins:0,bestScore:0,upg:{magnet:0,coin:0,boost:0,flytime:0,shield:false,headstart:false,revive:false},skins:['aurora'],skin:'aurora',hats:['none'],hat:'none',level:0,lastDay:0,streak:0,name:'',names:[],device:'',grants:[],seenReload:0};
+let save={coins:0,bestScore:0,upg:{magnet:0,coin:0,boost:0,flytime:0,shield:false,headstart:false,revive:false},skins:['aurora'],skin:'aurora',hats:['none'],hat:'none',level:0,lastDay:0,streak:0,name:'',names:[],device:'',grants:[],seenReload:0,sfx:true,music:true,msn:null};
 let memBoard=[];
 
 // personal progress store: Claude preview -> window.storage, hosted site -> localStorage, else memory
@@ -649,6 +675,7 @@ async function loadSave(){
       save.name=d.name||''; save.device=d.device||'';
       save.names=Array.isArray(d.names)?d.names:(d.name?[d.name]:[]);
       save.seenReload=d.seenReload||0;
+      save.sfx=d.sfx!==false; save.music=d.music!==false; save.msn=d.msn||null;
       save.grants=Array.isArray(d.grants)?d.grants:[];
       sanitiseSave();
     }
@@ -1008,6 +1035,7 @@ let slow=1,slowUntil=0,animScale=1;                                   // near-mi
 const FLY_NEED=22, FLY_MS=6000, FLY_Y=2.4, FLY_COOL=9000;
 let lastT=performance.now();
 let runStart=0, runVoid=false, frameCount=0;   // run integrity
+let nearMissCount=0, flightCount=0, slideCount=0;  // mission tracking
 
 function applyLevelTheme(c){
   scene.background.setHex(c.bg); scene.fog.color.setHex(c.bg);
@@ -1076,14 +1104,15 @@ function hitCheck(){
 ========================================================= */
 function moveLeft(){if(state==='playing'&&laneIdx>0){laneIdx--;targetX=LANES[laneIdx];}}
 function moveRight(){if(state==='playing'&&laneIdx<2){laneIdx++;targetX=LANES[laneIdx];}}
-function jump(){if(state==='playing'&&!flying&&grounded){sliding=false;vy=0.27;grounded=false;}}
-function slide(){if(state==='playing'&&!flying&&grounded&&!sliding){sliding=true;slideUntil=performance.now()+560;}}
+function jump(){if(state==='playing'&&!flying&&grounded){sliding=false;vy=0.27;grounded=false;SFX.jump();}}
+function slide(){if(state==='playing'&&!flying&&grounded&&!sliding){sliding=true;slideUntil=performance.now()+560;slideCount++;SFX.slide();}}
 function startFlight(duration,consume){
   flying=true; flyUntil=performance.now()+duration; flyCoinTimer=0; flyLane=laneIdx;
   if(consume) flyCharge=0;
   sliding=false; vy=0; grounded=false; jet.visible=true; invulnUntil=0;
   obstacles.forEach(o=>scene.remove(o)); obstacles.length=0; // clear the sky
   burst(player.position.clone(),0x5cf0ff,22);
+  flightCount++; SFX.fly();
 }
 function activateFly(){
   if(state!=='playing'||flying||flyCharge<flyNeed||performance.now()<flyCoolUntil) return;
@@ -1142,7 +1171,7 @@ function tick(now){
     for(let i=obstacles.length-1;i>=0;i--){const o=obstacles[i];o.position.z+=dz;
       if(!flying && !o.userData.passed && o.position.z>0.7 && o.position.z<2.2){
         o.userData.passed=true;
-        if(Math.abs(o.position.x-player.position.x)<1.35 && now>slowUntil){ slowUntil=now+240*trSlowmo; bonusScore+=5; shake=Math.max(shake,0.1); }
+        if(Math.abs(o.position.x-player.position.x)<1.35 && now>slowUntil){ slowUntil=now+240*trSlowmo; bonusScore+=5; shake=Math.max(shake,0.1); nearMissCount++; SFX.near(); }
       }
       if(o.position.z>12){scene.remove(o);obstacles.splice(i,1);}
     }
@@ -1186,7 +1215,7 @@ function tick(now){
     const pr=(0.9+magnetLvl*0.15)*trCoinR;
     for(let i=coins.length-1;i>=0;i--){const c=coins[i];
       if(Math.abs(c.position.z)<0.95&&Math.abs(c.position.x-player.position.x)<pr&&(flying||player.position.y<1.6)){
-        burst(c.position,currentColor,9); scene.remove(c); coins.splice(i,1); orbCount++;
+        burst(c.position,currentColor,9); scene.remove(c); coins.splice(i,1); orbCount++; SFX.coin();
         if(!flying && now>=flyCoolUntil) flyCharge=Math.min(flyNeed,flyCharge+1);
       }
     }
@@ -1244,7 +1273,7 @@ requestAnimationFrame(tick);
 /* =========================================================
    FLOW + UI
 ========================================================= */
-const screens={menu:'menuScreen',name:'nameScreen',levels:'levelScreen',shop:'shopScreen',over:'overScreen',adminLogin:'adminLogin',admin:'adminScreen'};
+const screens={menu:'menuScreen',name:'nameScreen',levels:'levelScreen',shop:'shopScreen',over:'overScreen',missions:'missionScreen',adminLogin:'adminLogin',admin:'adminScreen'};
 const hud=document.getElementById('hud');
 function showScreen(name){
   Object.values(screens).forEach(id=>document.getElementById(id).classList.add('hidden'));
@@ -1286,6 +1315,8 @@ function startRun(){
   if(!save.name){ showNameScreen('menu'); return; }
   resetRun(); state='playing'; showScreen(null);
   runStart=performance.now(); runVoid=false; frameCount=0;
+  nearMissCount=0; flightCount=0; slideCount=0;
+  musicStart();
   flyDock.classList.remove('hidden'); updateFlyDock(performance.now());
   setupGhost(); // pull the week's #1 to pace against
   if(save.upg.headstart) startFlight(2600,false); // free launch boost
@@ -1293,6 +1324,7 @@ function startRun(){
 
 function endRun(){
   state='over'; shake=0.5; flying=false; jet.visible=false; flyDock.classList.add('hidden');
+  musicStop(); SFX.crash();
   if(ghost) ghost.group.visible=false;
   burst(player.position.clone(),0xff2e7e,26);
   if(rig){ rig.group.visible=true; if(charMain){charMain.emissive.setHex(0xff2e7e);charMain.emissiveIntensity=0.9;} }
@@ -1312,7 +1344,16 @@ function endRun(){
   save.coins+=earned;
   const isBest=(!runVoid && score>save.bestScore);
   if(isBest)save.bestScore=score;
+
+  // daily missions
+  let msnDone=[];
+  if(!runVoid){
+    msnDone=missionProgress({orbs:orbCount,dist:distance,score:score,near:nearMissCount,
+                             flights:flightCount,slides:slideCount,earned:earned});
+  }
   persist();
+  if(isBest) SFX.best();
+  msnDone.forEach((d,i)=>setTimeout(()=>{ SFX.mission(); toast('Mission done: '+d.name+' +'+d.reward); },900+i*1900));
   if(runVoid) toast('Run flagged — no reward given',true);
 
   document.getElementById('finalScore').textContent=score;
@@ -1412,6 +1453,11 @@ async function openMenu(){
   const b=await loadBoard(); renderBoard(document.getElementById('menuBoard'),b,-1);
   bestEl.textContent=save.bestScore;
   document.getElementById('menuName').textContent=save.name||'not set';
+  ensureMissions();
+  const md=save.msn.done.filter(Boolean).length;
+  document.getElementById('missionBtn').textContent='Missions ('+md+'/3)';
+  paintSoundBtns();
+  musicStop();
   showScreen('menu');
 }
 
@@ -1454,7 +1500,7 @@ function renderShop(){
       const btn=document.createElement('button'); btn.className='btn sm';
       if(maxed){btn.textContent='Maxed';btn.disabled=true;}
       else{btn.innerHTML='Buy '+priceTag(cost); if(save.coins<cost)btn.disabled=true;
-        btn.addEventListener('click',()=>{if(save.coins>=cost){save.coins-=cost;save.upg[kk]=lvl+1;persist();toast(u.name+' upgraded');renderShop();}});}
+        btn.addEventListener('click',()=>{if(save.coins>=cost){save.coins-=cost;save.upg[kk]=lvl+1;persist();SFX.buy();toast(u.name+' upgraded');renderShop();}else SFX.deny();});}
       row.lastElementChild.replaceWith(btn); list.appendChild(row);
     });
     // one-time upgrades
@@ -1466,7 +1512,7 @@ function renderShop(){
       const btn=document.createElement('button'); btn.className='btn sm';
       if(owned){btn.textContent='Owned';btn.disabled=true;}
       else{btn.innerHTML='Buy '+priceTag(u.cost); if(save.coins<u.cost)btn.disabled=true;
-        btn.addEventListener('click',()=>{if(save.coins>=u.cost){save.coins-=u.cost;save.upg[kk]=true;persist();toast(u.name+' acquired');renderShop();}});}
+        btn.addEventListener('click',()=>{if(save.coins>=u.cost){save.coins-=u.cost;save.upg[kk]=true;persist();SFX.buy();toast(u.name+' acquired');renderShop();}else SFX.deny();});}
       row.lastElementChild.replaceWith(btn); list.appendChild(row);
     });
   }else if(shopTab==='skin'){
@@ -1480,7 +1526,7 @@ function renderShop(){
       if(equipped){btn.textContent='Equipped';btn.disabled=true;}
       else if(owned){btn.textContent='Equip';btn.classList.add('ghost');btn.addEventListener('click',()=>{save.skin=s.id;applySkin(s.id);persist();renderShop();});}
       else{btn.innerHTML='Buy '+priceTag(s.cost); if(save.coins<s.cost)btn.disabled=true;
-        btn.addEventListener('click',()=>{if(save.coins>=s.cost){save.coins-=s.cost;save.skins.push(s.id);save.skin=s.id;applySkin(s.id);persist();toast(s.name+' unlocked');renderShop();}});}
+        btn.addEventListener('click',()=>{if(save.coins>=s.cost){save.coins-=s.cost;save.skins.push(s.id);save.skin=s.id;applySkin(s.id);persist();SFX.buy();toast(s.name+' unlocked');renderShop();}else SFX.deny();});}
       row.lastElementChild.replaceWith(btn); list.appendChild(row);
     });
   }else{
@@ -1493,7 +1539,7 @@ function renderShop(){
       if(equipped){btn.textContent='Equipped';btn.disabled=true;}
       else if(owned){btn.textContent='Equip';btn.classList.add('ghost');btn.addEventListener('click',()=>{save.hat=h.id;applySkin(save.skin);persist();renderShop();});}
       else{btn.innerHTML='Buy '+priceTag(h.cost); if(save.coins<h.cost)btn.disabled=true;
-        btn.addEventListener('click',()=>{if(save.coins>=h.cost){save.coins-=h.cost;save.hats.push(h.id);save.hat=h.id;applySkin(save.skin);persist();toast(h.name+' equipped');renderShop();}});}
+        btn.addEventListener('click',()=>{if(save.coins>=h.cost){save.coins-=h.cost;save.hats.push(h.id);save.hat=h.id;applySkin(save.skin);persist();SFX.buy();toast(h.name+' equipped');renderShop();}else SFX.deny();});}
       row.lastElementChild.replaceWith(btn); list.appendChild(row);
     });
   }
@@ -1503,6 +1549,14 @@ function renderShop(){
 document.getElementById('playBtn').addEventListener('click',startRun);
 document.getElementById('levelsBtn').addEventListener('click',()=>{renderLevels();showScreen('levels');});
 document.getElementById('shopBtn').addEventListener('click',()=>{shopTab='upg';renderShop();showScreen('shop');});
+document.getElementById('missionBtn').addEventListener('click',()=>{renderMissions();showScreen('missions');});
+document.getElementById('msnBack').addEventListener('click',openMenu);
+function paintSoundBtns(){
+  document.getElementById('sfxBtn').textContent='SFX: '+(save.sfx?'ON':'OFF');
+  document.getElementById('musBtn').textContent='Music: '+(save.music?'ON':'OFF');
+}
+document.getElementById('sfxBtn').addEventListener('click',()=>{ save.sfx=!save.sfx; persist(); paintSoundBtns(); if(save.sfx)SFX.buy(); });
+document.getElementById('musBtn').addEventListener('click',()=>{ save.music=!save.music; persist(); paintSoundBtns(); if(!save.music)musicStop(); });
 document.getElementById('lvlBack').addEventListener('click',openMenu);
 document.getElementById('shopBack').addEventListener('click',openMenu);
 document.getElementById('tabUpg').addEventListener('click',()=>{shopTab='upg';renderShop();});
@@ -1542,6 +1596,157 @@ addEventListener('keydown',e=>{
 // console fishing gets nothing: every function lives inside this closure,
 // but clear the console anyway so pasted snippets leave no trail
 setInterval(function(){ if(ANTICHEAT.clearConsole){ try{ console.clear(); }catch(e){} } },4000);
+
+/* =========================================================
+   SOUND — everything is synthesised, no audio files to host
+========================================================= */
+let actx=null, master=null;
+function audioInit(){
+  if(actx) return;
+  try{
+    actx=new (window.AudioContext||window.webkitAudioContext)();
+    master=actx.createGain(); master.gain.value=0.38; master.connect(actx.destination);
+  }catch(e){ actx=null; }
+}
+function audioWake(){ audioInit(); if(actx&&actx.state==='suspended'){ actx.resume(); } }
+addEventListener('pointerdown',audioWake,{passive:true});
+addEventListener('keydown',audioWake);
+
+function tone(o){
+  if(!actx||!save.sfx) return;
+  const t=actx.currentTime+(o.delay||0);
+  const osc=actx.createOscillator(), g=actx.createGain();
+  osc.type=o.type||'square';
+  osc.frequency.setValueAtTime(o.f,t);
+  if(o.f2) osc.frequency.exponentialRampToValueAtTime(Math.max(20,o.f2),t+(o.dur||0.12));
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(o.vol||0.2,t+0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+(o.dur||0.12));
+  osc.connect(g); g.connect(master); osc.start(t); osc.stop(t+(o.dur||0.12)+0.02);
+}
+function noiseHit(dur,vol,cut,sweep){
+  if(!actx||!save.sfx) return;
+  const t=actx.currentTime, n=Math.floor(actx.sampleRate*dur);
+  const buf=actx.createBuffer(1,n,actx.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+  const src=actx.createBufferSource(); src.buffer=buf;
+  const f=actx.createBiquadFilter(); f.type='lowpass';
+  f.frequency.setValueAtTime(cut||1800,t);
+  if(sweep) f.frequency.exponentialRampToValueAtTime(Math.max(80,sweep),t+dur);
+  const g=actx.createGain(); g.gain.setValueAtTime(vol||0.2,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  src.connect(f); f.connect(g); g.connect(master); src.start(t);
+}
+const SFX={
+  jump:()=>tone({f:330,f2:760,type:'square',dur:0.14,vol:0.16}),
+  slide:()=>noiseHit(0.28,0.16,2600,300),
+  coin:()=>{ tone({f:1180,type:'triangle',dur:0.07,vol:0.13}); tone({f:1760,type:'triangle',dur:0.09,vol:0.10,delay:0.05}); },
+  near:()=>noiseHit(0.22,0.13,900,2400),
+  crash:()=>{ noiseHit(0.5,0.35,1200,60); tone({f:180,f2:44,type:'sawtooth',dur:0.45,vol:0.22}); },
+  fly:()=>{ tone({f:220,f2:900,type:'sawtooth',dur:0.5,vol:0.16}); noiseHit(0.5,0.12,600,3000); },
+  buy:()=>{ tone({f:660,type:'square',dur:0.07,vol:0.14}); tone({f:990,type:'square',dur:0.1,vol:0.12,delay:0.07}); },
+  deny:()=>tone({f:200,f2:120,type:'square',dur:0.18,vol:0.16}),
+  mission:()=>[0,0.09,0.18,0.30].forEach((d,i)=>tone({f:[523,659,784,1046][i],type:'triangle',dur:0.22,vol:0.15,delay:d})),
+  best:()=>[0,0.1,0.2].forEach((d,i)=>tone({f:[784,988,1318][i],type:'square',dur:0.2,vol:0.14,delay:d})),
+};
+
+/* ---- music: a small looping synth line while you run ---- */
+const BPM=132, STEP=60/BPM/2;      // eighth notes
+const BASS=[0,0,7,0, 5,5,3,3], ARP=[12,15,19,15, 17,19,22,19];
+let musicStep=0, musicNext=0, musicOn=false;
+function noteHz(semi){ return 55*Math.pow(2,semi/12); }
+function musicTick(){
+  if(!actx||!musicOn||!save.music||state!=='playing') return;
+  const now=actx.currentTime;
+  while(musicNext<now+0.25){
+    const s=musicStep%8, t=musicNext;
+    const mk=(hz,type,dur,vol)=>{
+      const o=actx.createOscillator(), g=actx.createGain();
+      o.type=type; o.frequency.setValueAtTime(hz,t);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.02);
+    };
+    mk(noteHz(BASS[s]),'sawtooth',STEP*0.9,0.075);                  // bass
+    if(s%2===0) mk(noteHz(ARP[s]+12),'triangle',STEP*0.7,0.045);    // arp
+    if(s===2||s===6){                                                // hat
+      const n=Math.floor(actx.sampleRate*0.05), b=actx.createBuffer(1,n,actx.sampleRate), d=b.getChannelData(0);
+      for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+      const src=actx.createBufferSource(); src.buffer=b;
+      const f=actx.createBiquadFilter(); f.type='highpass'; f.frequency.value=6000;
+      const g=actx.createGain(); g.gain.value=0.05;
+      src.connect(f); f.connect(g); g.connect(master); src.start(t);
+    }
+    musicStep++; musicNext+=STEP;
+  }
+}
+setInterval(musicTick,60);
+function musicStart(){ audioWake(); if(!actx) return; musicOn=true; musicStep=0; musicNext=actx.currentTime+0.1; }
+function musicStop(){ musicOn=false; }
+
+/* =========================================================
+   DAILY MISSIONS — same three for everyone, every day
+========================================================= */
+const MISSIONS=[
+  {id:'orbs',  name:'Orb Hoarder', desc:'Collect {t} orbs today',        t:80,   reward:400, mode:'sum',  get:r=>r.orbs},
+  {id:'dist',  name:'Long Hauler', desc:'Cover {t}m today',              t:2500, reward:450, mode:'sum',  get:r=>Math.floor(r.dist)},
+  {id:'score', name:'High Roller', desc:'Score {t} in one run',          t:600,  reward:500, mode:'best', get:r=>r.score},
+  {id:'near',  name:'Close Shave', desc:'{t} near misses today',         t:25,   reward:400, mode:'sum',  get:r=>r.near},
+  {id:'runs',  name:'Persistent',  desc:'Finish {t} runs today',         t:6,    reward:300, mode:'sum',  get:()=>1},
+  {id:'fly',   name:'Jet Set',     desc:'Use the jetpack {t} times',     t:5,    reward:400, mode:'sum',  get:r=>r.flights},
+  {id:'slide', name:'Low Rider',   desc:'Slide {t} times today',         t:30,   reward:350, mode:'sum',  get:r=>r.slides},
+  {id:'nofly', name:'Purist',      desc:'Score {t} without flying',      t:400,  reward:550, mode:'best', get:r=>r.flights?0:r.score},
+  {id:'coins', name:'Rich Kid',    desc:'Earn {t} coins today',          t:600,  reward:400, mode:'sum',  get:r=>r.earned},
+];
+function todayMid(){ const n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate()).getTime(); }
+function pickMissions(seed){
+  let s=(seed%233280+233280)%233280, out=[], guard=0;
+  while(out.length<3 && guard++<200){
+    s=(s*9301+49297)%233280;
+    const i=Math.floor(s/233280*MISSIONS.length);
+    if(out.indexOf(MISSIONS[i].id)<0) out.push(MISSIONS[i].id);
+  }
+  MISSIONS.forEach(m=>{ if(out.length<3&&out.indexOf(m.id)<0) out.push(m.id); });
+  return out;
+}
+function ensureMissions(){
+  const day=todayMid();
+  if(!save.msn||save.msn.day!==day){
+    save.msn={day:day,pick:pickMissions(Math.floor(day/86400000)),prog:[0,0,0],done:[false,false,false]};
+    persist();
+  }
+  return save.msn;
+}
+function msnDef(id){ return MISSIONS.find(m=>m.id===id)||MISSIONS[0]; }
+// feed one finished run into today's missions; returns the ones just completed
+function missionProgress(run){
+  const m=ensureMissions(), finished=[];
+  m.pick.forEach((id,i)=>{
+    if(m.done[i]) return;
+    const d=msnDef(id), v=d.get(run)||0;
+    m.prog[i] = d.mode==='best' ? Math.max(m.prog[i],v) : m.prog[i]+v;
+    if(m.prog[i]>=d.t){ m.done[i]=true; save.coins+=d.reward; finished.push(d); }
+  });
+  persist();
+  return finished;
+}
+function renderMissions(){
+  const m=ensureMissions(), list=document.getElementById('msnList');
+  list.innerHTML='';
+  m.pick.forEach((id,i)=>{
+    const d=msnDef(id), done=m.done[i], pct=Math.min(100,Math.round(m.prog[i]/d.t*100));
+    const row=document.createElement('div'); row.className='msn'+(done?' done':'');
+    row.innerHTML='<div class="mi"><div class="mname">'+d.name+'</div>'+
+      '<div class="mdesc">'+d.desc.replace('{t}',d.t)+'</div>'+
+      '<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div>'+
+      '<div class="mnum">'+Math.min(m.prog[i],d.t)+' / '+d.t+'</div></div>'+
+      '<div class="mrew">'+(done?'<div class="mtick">✓</div>':'<span class="price"><span class="dot"></span>'+d.reward+'</span>')+'</div>';
+    list.appendChild(row);
+  });
+  const left=24-new Date().getHours();
+  document.getElementById('msnReset').textContent='New missions in '+left+'h · everyone gets the same three';
+}
+
 
 /* =========================================================
    OWNER TOOLS — bans, coin/score grants, admin panel
