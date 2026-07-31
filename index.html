@@ -180,12 +180,6 @@
   .toast.show{opacity:1;}
   .toast.warn{background:rgba(255,46,126,.14);border-color:var(--magenta);color:#ff8fb5;text-shadow:0 0 10px rgba(255,46,126,.5);}
 
-  /* security lock */
-  #lockScreen{z-index:60;background:radial-gradient(120% 90% at 50% 20%,rgba(255,46,126,.10),transparent 60%),rgba(4,2,10,.97);}
-  #lockScreen .go-title{color:var(--magenta);}
-  #lockScreen .lockmsg{margin-top:14px;max-width:420px;color:var(--ink);font-size:13px;letter-spacing:.06em;line-height:1.9;}
-  #lockScreen .lockmsg b{color:var(--magenta);}
-
   /* ban screen */
   #banScreen{z-index:70;background:radial-gradient(120% 90% at 50% 20%,rgba(255,46,126,.12),transparent 60%),rgba(10,1,6,.98);}
   #banScreen .go-title{color:var(--magenta);}
@@ -298,14 +292,6 @@
     <button class="btn ghost" id="menuBtn">Menu</button>
   </div>
   <div class="note">Scores are shared &mdash; keep names clean, everyone sees this board</div>
-</div>
-
-<!-- ===== SECURITY LOCK ===== -->
-<div class="screen hidden" id="lockScreen">
-  <div class="go-title">RUN VOIDED</div>
-  <div class="lockmsg" id="lockMsg">Developer tools detected.</div>
-  <div class="lockmsg">The current run has been discarded. Close the tools and hit continue.</div>
-  <div class="menu-row"><button class="btn" id="lockRetry">Continue</button></div>
 </div>
 
 <!-- ===== SECRET CORNER (bottom-right, invisible) ===== -->
@@ -986,7 +972,6 @@ let slow=1,slowUntil=0,animScale=1;                                   // near-mi
 const FLY_NEED=22, FLY_MS=6000, FLY_Y=2.4, FLY_COOL=9000;
 let lastT=performance.now();
 let runStart=0, runVoid=false, frameCount=0;   // run integrity
-let locked=false, lockReason='';               // security lock
 
 function applyLevelTheme(c){
   scene.background.setHex(c.bg); scene.fog.color.setHex(c.bg);
@@ -1262,7 +1247,6 @@ flyDock.addEventListener('pointerdown',e=>{e.preventDefault();activateFly();});
 
 function startRun(){
   if(banInfo){ showBanScreen(banInfo); return; }
-  if(locked){ showLock(lockReason); return; }
   resetRun(); state='playing'; showScreen(null);
   runStart=performance.now(); runVoid=false; frameCount=0;
   flyDock.classList.remove('hidden'); updateFlyDock(performance.now());
@@ -1472,24 +1456,8 @@ nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')doSave();});
 const ANTICHEAT={
   blockKeys:true,        // F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S
   blockContextMenu:true, // right click
-  detectDevTools:true,   // window-size heuristic
-  debuggerTrap:true,     // timing trap — very reliable, set false while you develop
-  voidRunOnDetect:true   // discard the run in progress when tools open
+  clearConsole:true      // wipe the console every few seconds
 };
-
-function showLock(msg){
-  lockReason=msg||lockReason||'Developer tools detected.';
-  document.getElementById('lockMsg').textContent=lockReason;
-  Object.values(screens).forEach(id=>document.getElementById(id).classList.add('hidden'));
-  document.getElementById('lockScreen').classList.remove('hidden');
-  hud.classList.add('hidden'); flyDock.classList.add('hidden');
-}
-function lockGame(reason){
-  if(locked) return;
-  locked=true;
-  if(state==='playing' && ANTICHEAT.voidRunOnDetect){ runVoid=true; state='menu'; }
-  showLock(reason);
-}
 
 // key + mouse deterrents
 addEventListener('contextmenu',e=>{ if(ANTICHEAT.blockContextMenu){ e.preventDefault(); } });
@@ -1504,35 +1472,9 @@ addEventListener('keydown',e=>{
   if(combo){ e.preventDefault(); e.stopPropagation(); toast('Nope.',true); }
 },true);
 
-// detection: docked devtools change the viewport; open devtools also pause on `debugger`
-function devtoolsBySize(){
-  return (window.outerWidth-window.innerWidth>200)||(window.outerHeight-window.innerHeight>220);
-}
-function devtoolsByTiming(){
-  if(!ANTICHEAT.debuggerTrap) return false;
-  const t0=performance.now();
-  debugger;                       // pauses only when devtools are open
-  return performance.now()-t0>140;
-}
-let acStrikes=0;
-setInterval(function(){
-  if(locked||!ANTICHEAT.detectDevTools) return;
-  const open=devtoolsBySize()||devtoolsByTiming();
-  acStrikes = open ? acStrikes+1 : 0;   // two strikes, so a window resize isn't a false alarm
-  if(acStrikes>=2) lockGame('Developer tools detected.');
-},1500);
-
 // console fishing gets nothing: every function lives inside this closure,
 // but clear the console anyway so pasted snippets leave no trail
-setInterval(function(){ if(ANTICHEAT.detectDevTools){ try{ console.clear(); }catch(e){} } },4000);
-
-document.getElementById('lockRetry').addEventListener('click',function(){
-  acStrikes=0;
-  if(devtoolsBySize()||devtoolsByTiming()){ showLock('Still open — close the tools first.'); return; }
-  locked=false; lockReason='';
-  document.getElementById('lockScreen').classList.add('hidden');
-  openMenu();
-});
+setInterval(function(){ if(ANTICHEAT.clearConsole){ try{ console.clear(); }catch(e){} } },4000);
 
 /* =========================================================
    OWNER TOOLS — bans, coin/score grants, admin panel
@@ -1594,7 +1536,6 @@ async function checkBan(){
 }
 function showBanScreen(b){
   Object.values(screens).forEach(id=>document.getElementById(id).classList.add('hidden'));
-  document.getElementById('lockScreen').classList.add('hidden');
   document.getElementById('banScreen').classList.remove('hidden');
   hud.classList.add('hidden'); flyDock.classList.add('hidden');
   document.getElementById('banWhy').textContent=b.reason?('Reason: '+b.reason):'You have been banned from this game.';
@@ -1751,8 +1692,7 @@ async function tryAdminLogin(){
   const pw=document.getElementById('admPass').value||'';
   if(await checkAdminPass(pw)){
     isAdmin=true; admFails=0;
-    ANTICHEAT.detectDevTools=false; ANTICHEAT.blockKeys=false; ANTICHEAT.blockContextMenu=false;   // owner needs the tools
-    locked=false; document.getElementById('lockScreen').classList.add('hidden');
+    ANTICHEAT.blockKeys=false; ANTICHEAT.blockContextMenu=false; ANTICHEAT.clearConsole=false;   // owner needs the tools
     document.getElementById('banScreen').classList.add('hidden'); clearInterval(banTicker);
     openAdmin();
   } else {
