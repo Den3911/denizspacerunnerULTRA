@@ -163,13 +163,15 @@
   .brow.me .nm{color:var(--cyan);}
   .board .empty{color:var(--dim);text-align:center;font-size:12px;letter-spacing:.1em;padding:12px;}
 
-  #nameRow{margin-top:18px;display:flex;gap:10px;align-items:center;justify-content:center;}
-  #nameInput{width:130px;text-align:center;text-transform:uppercase;letter-spacing:.3em;font-family:inherit;font-weight:800;
-    font-size:17px;color:var(--ink);background:rgba(255,255,255,.04);border:1px solid var(--dim);border-radius:2px;padding:11px;}
-  #nameInput:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 16px rgba(34,230,255,.3);}
-  #nameInput.bad,#nameInput.bad:focus{border-color:var(--magenta);color:#ff8fb5;box-shadow:0 0 16px rgba(255,46,126,.35);animation:nudge .3s;}
+  #nameRow{margin-top:18px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  .asname{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+  .asname b{color:var(--cyan);font-size:17px;letter-spacing:.2em;text-shadow:0 0 14px rgba(34,230,255,.5);}
+  #nmInput{width:190px;text-align:center;text-transform:uppercase;letter-spacing:.3em;font-family:inherit;font-weight:800;
+    font-size:20px;color:var(--ink);background:rgba(255,255,255,.04);border:1px solid var(--dim);border-radius:2px;padding:14px;}
+  #nmInput:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 16px rgba(34,230,255,.3);}
+  #nmInput.bad,#nmInput.bad:focus{border-color:var(--magenta);color:#ff8fb5;box-shadow:0 0 16px rgba(255,46,126,.35);animation:nudge .3s;}
   @keyframes nudge{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
-  #nameHint{margin-top:8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--magenta);min-height:14px;}
+  #nmHint,#nameHint{margin-top:10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--magenta);min-height:14px;}
 
   .keys{margin-top:14px;color:var(--dim);font-size:11px;letter-spacing:.08em;line-height:1.9;}
   .keys span{color:var(--ink);}
@@ -239,9 +241,25 @@
       <button class="link-btn" id="shopBtn">Shop</button>
     </div>
     <div class="blink">Fill the boost meter mid-run to take flight</div>
+    <div class="seltag" style="margin-top:14px;position:relative;z-index:3">Player <b id="menuName">—</b> · <button class="link-btn" id="menuChangeName" style="font-size:11px;letter-spacing:.14em">Change</button></div>
   </div>
   <div class="keys">&larr; &rarr; / <span>A D</span> move &nbsp;&middot;&nbsp; <span>SPACE</span> / &uarr; jump &nbsp;&middot;&nbsp; <span>&darr;</span> / S slide &nbsp;&middot;&nbsp; <span>F</span> / tap meter to fly</div>
   <div class="board" id="menuBoard"></div>
+</div>
+
+<!-- ===== SET NAME (required before playing) ===== -->
+<div class="screen hidden" id="nameScreen">
+  <div class="go-title" style="color:var(--cyan);text-shadow:0 0 26px rgba(34,230,255,.5)">WHO ARE YOU?</div>
+  <div class="sub">Pick the name you'll appear as on the leaderboard</div>
+  <div class="adm-row" style="justify-content:center;margin-top:20px">
+    <input id="nmInput" maxlength="8" placeholder="NAME" autocomplete="off" spellcheck="false">
+  </div>
+  <div id="nmHint"></div>
+  <div class="menu-row">
+    <button class="btn" id="nmGo">Confirm</button>
+    <button class="btn ghost" id="nmCancel">Back</button>
+  </div>
+  <div class="note">3–8 characters · letters and numbers</div>
 </div>
 
 <!-- fly / boost meter (during play) -->
@@ -282,7 +300,8 @@
   <div class="reward" id="rivalPing" style="color:var(--cyan)"></div>
   <div class="wallet"><span class="dot"></span><span id="overCoins">0</span> coins</div>
   <div id="nameRow">
-    <input id="nameInput" maxlength="8" placeholder="YOU" autocomplete="off" spellcheck="false">
+    <span class="asname">Posting as <b id="asName">—</b></span>
+    <button class="btn ghost sm" id="changeName">Change</button>
     <button class="btn sm" id="saveBtn">Save Score</button>
   </div>
   <div id="nameHint"></div>
@@ -340,7 +359,18 @@
         <input id="banReason" class="adm-in" placeholder="reason (optional)" style="flex:1;min-width:130px">
         <button class="adm-btn danger" id="banGo">Ban</button>
       </div>
+      <div class="adm-note" style="margin-top:12px">Known players — tap to load into the box</div>
+      <div class="adm-list" id="playerList"></div>
+      <div class="adm-note" style="margin-top:10px">Active bans</div>
       <div class="adm-list" id="banList"></div>
+    </div>
+
+    <div class="adm-card">
+      <h4>Broadcast</h4>
+      <div class="adm-row">
+        <button class="adm-btn danger" id="forceReload">Refresh everyone's game</button>
+      </div>
+      <div class="adm-note">Every player reloads within ~12 seconds — mid-run players reload as soon as they crash. Use it after uploading a new version. Your own screen is not reloaded.</div>
     </div>
 
     <div class="adm-card">
@@ -578,8 +608,12 @@ function sanitiseSave(){
   if(!Array.isArray(save.grants)) save.grants=[];
   if(save.grants.length>60) save.grants=save.grants.slice(-60);
   save.name=String(save.name||'').toUpperCase().slice(0,8);
+  if(!Array.isArray(save.names)) save.names=[];
+  save.names=save.names.map(n=>String(n||'').toUpperCase().slice(0,8)).filter(Boolean);
+  if(save.name&&save.names.indexOf(save.name)<0) save.names.push(save.name);
+  if(save.names.length>12) save.names=save.names.slice(-12);
 }
-let save={coins:0,bestScore:0,upg:{magnet:0,coin:0,boost:0,flytime:0,shield:false,headstart:false,revive:false},skins:['aurora'],skin:'aurora',hats:['none'],hat:'none',level:0,lastDay:0,streak:0,name:'',device:'',grants:[]};
+let save={coins:0,bestScore:0,upg:{magnet:0,coin:0,boost:0,flytime:0,shield:false,headstart:false,revive:false},skins:['aurora'],skin:'aurora',hats:['none'],hat:'none',level:0,lastDay:0,streak:0,name:'',names:[],device:'',grants:[],seenReload:0};
 let memBoard=[];
 
 // personal progress store: Claude preview -> window.storage, hosted site -> localStorage, else memory
@@ -613,6 +647,8 @@ async function loadSave(){
       save.hat=d.hat||'none';
       save.lastDay=d.lastDay||0; save.streak=d.streak||0;
       save.name=d.name||''; save.device=d.device||'';
+      save.names=Array.isArray(d.names)?d.names:(d.name?[d.name]:[]);
+      save.seenReload=d.seenReload||0;
       save.grants=Array.isArray(d.grants)?d.grants:[];
       sanitiseSave();
     }
@@ -647,7 +683,7 @@ async function loadBoard(){
   const wk=weekId();
   if(FIREBASE_URL){
     try{
-      const res=await fetch(fbBase()+'/scores.json');
+      const res=await fetch(fbBase()+'/scores.json?_='+Date.now(),{cache:'no-store'});
       if(res.ok){
         const data=await res.json();
         if(!data) return [];
@@ -1208,7 +1244,7 @@ requestAnimationFrame(tick);
 /* =========================================================
    FLOW + UI
 ========================================================= */
-const screens={menu:'menuScreen',levels:'levelScreen',shop:'shopScreen',over:'overScreen',adminLogin:'adminLogin',admin:'adminScreen'};
+const screens={menu:'menuScreen',name:'nameScreen',levels:'levelScreen',shop:'shopScreen',over:'overScreen',adminLogin:'adminLogin',admin:'adminScreen'};
 const hud=document.getElementById('hud');
 function showScreen(name){
   Object.values(screens).forEach(id=>document.getElementById(id).classList.add('hidden'));
@@ -1247,6 +1283,7 @@ flyDock.addEventListener('pointerdown',e=>{e.preventDefault();activateFly();});
 
 function startRun(){
   if(banInfo){ showBanScreen(banInfo); return; }
+  if(!save.name){ showNameScreen('menu'); return; }
   resetRun(); state='playing'; showScreen(null);
   runStart=performance.now(); runVoid=false; frameCount=0;
   flyDock.classList.remove('hidden'); updateFlyDock(performance.now());
@@ -1293,46 +1330,76 @@ function endRun(){
     else { ping.textContent='Top 10 still out of reach — keep running!'; }
   });
   loadBoard().then(b=>renderBoard(document.getElementById('overBoard'),b,-1));
+  document.getElementById('asName').textContent=save.name||'—';
   showScreen('over');
-  setTimeout(()=>document.getElementById('nameInput').focus(),60);
+  enforceBan();
+  if(pendingReload){ toast('Updating…'); setTimeout(()=>location.reload(),1800); }
 
   // unlock toast
   const justUnlocked=LEVELS.find(l=>l.unlock>0 && save.bestScore>=l.unlock && save.bestScore-score<l.unlock && score<l.unlock);
   if(justUnlocked) setTimeout(()=>toast('Unlocked level: '+justUnlocked.name),300);
 }
 
-/* ---- name box: live checking + blocked-name handling ---- */
-const nameInput=document.getElementById('nameInput');
+/* ---- name gate: a name is required before playing ---- */
+const nmInput=document.getElementById('nmInput');
+const nmHint=document.getElementById('nmHint');
 const nameHint=document.getElementById('nameHint');
-function setNameHint(msg,bad){
-  nameHint.textContent=msg||'';
-  nameInput.classList.toggle('bad',!!bad);
-  if(bad){ nameInput.classList.remove('bad'); void nameInput.offsetWidth; nameInput.classList.add('bad'); } // restart shake
+let nameReturn='menu';
+function setNmHint(msg,bad){
+  nmHint.textContent=msg||'';
+  nmInput.classList.remove('bad');
+  if(bad){ void nmInput.offsetWidth; nmInput.classList.add('bad'); }
 }
-nameInput.addEventListener('input',()=>{
-  const v=nameInput.value.trim();
-  if(v && !nameIsClean(v)) setNameHint('Nope — pick a cleaner name',true);
-  else setNameHint('');
+function setNameHint(msg){ nameHint.textContent=msg||''; }
+function showNameScreen(from){
+  nameReturn=from||'menu';
+  state='menu';
+  nmInput.value=save.name||'';
+  setNmHint('');
+  showScreen('name');
+  document.getElementById('nmCancel').style.display = save.name ? '' : 'none';   // no way out until one is set
+  setTimeout(()=>nmInput.focus(),80);
+}
+nmInput.addEventListener('input',()=>{
+  const v=nmInput.value.trim();
+  if(v && !nameIsClean(v)) setNmHint('Nope — pick a cleaner name',true);
+  else setNmHint('');
 });
+async function submitName(){
+  const btn=document.getElementById('nmGo');
+  const raw=(nmInput.value||'').trim().toUpperCase().slice(0,8);
+  if(raw.length<3){ setNmHint('At least 3 characters',true); return; }
+  if(!/^[A-Z0-9]+$/.test(raw)){ setNmHint('Letters and numbers only',true); return; }
+  if(!nameIsClean(raw)){ setNmHint('That name is blocked — try another',true); return; }
+  btn.disabled=true; btn.textContent='Checking…';
+  const ok=await aiNameCheck(raw);
+  btn.disabled=false; btn.textContent='Confirm';
+  if(!ok){ setNmHint('That name is blocked — try another',true); return; }
+  save.name=raw;
+  if(save.names.indexOf(raw)<0) save.names.push(raw);
+  await persist(); registerPlayer(); enforceBan();
+  document.getElementById('asName').textContent=raw;
+  if(nameReturn==='over'){ showScreen('over'); } else { openMenu(); }
+  toast('Playing as '+raw);
+}
+document.getElementById('nmGo').addEventListener('click',submitName);
+document.getElementById('nmCancel').addEventListener('click',()=>{ if(nameReturn==='over') showScreen('over'); else openMenu(); });
+nmInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); submitName(); } });
+document.getElementById('changeName').addEventListener('click',()=>showNameScreen('over'));
+document.getElementById('menuChangeName').addEventListener('click',()=>showNameScreen('menu'));
 
 let savedThisRun=false;
 async function doSave(){
   if(savedThisRun)return;
   const btn=document.getElementById('saveBtn');
-  const raw=(nameInput.value||'YOU').trim().toUpperCase().slice(0,8)||'YOU';
+  if(!save.name){ showNameScreen('over'); return; }
+  if(banInfo){ setNameHint('You are banned'); return; }
+  if(runVoid){ setNameHint('Flagged run — cannot be posted'); toast('Run flagged',true); return; }
+  if(!nameIsClean(save.name)){ showNameScreen('over'); return; }
 
-  if(runVoid){ setNameHint('Flagged run — cannot be posted',true); toast('Run flagged',true); return; }
-  if(!/[a-z0-9]/i.test(raw)){ setNameHint('Use letters or numbers',true); return; }
-  if(!nameIsClean(raw)){ setNameHint('That name is blocked — try another',true); toast('Name blocked',true); return; }
-
-  btn.disabled=true; btn.textContent='Checking…';
-  const ok=await aiNameCheck(raw);
-  if(!ok){ btn.disabled=false; btn.textContent='Save Score'; setNameHint('That name is blocked — try another',true); toast('Name blocked',true); return; }
-
-  savedThisRun=true; btn.textContent='Saved'; setNameHint('');
-  save.name=raw; await persist(); registerPlayer();
-  const b=await saveScore(raw,score);
-  const idx=b.findIndex(r=>r.n===raw&&r.s===score);
+  savedThisRun=true; btn.disabled=true; btn.textContent='Saved'; setNameHint('');
+  const b=await saveScore(save.name,score);
+  const idx=b.findIndex(r=>r.n===save.name&&r.s===score);
   renderBoard(document.getElementById('overBoard'),b,idx);
 }
 
@@ -1344,6 +1411,7 @@ async function openMenu(){
   document.getElementById('selLevelName').textContent=(LEVELS[save.level]||LEVELS[0]).name;
   const b=await loadBoard(); renderBoard(document.getElementById('menuBoard'),b,-1);
   bestEl.textContent=save.bestScore;
+  document.getElementById('menuName').textContent=save.name||'not set';
   showScreen('menu');
 }
 
@@ -1443,7 +1511,6 @@ document.getElementById('tabGear').addEventListener('click',()=>{shopTab='gear';
 document.getElementById('againBtn').addEventListener('click',startRun);
 document.getElementById('menuBtn').addEventListener('click',openMenu);
 document.getElementById('saveBtn').addEventListener('click',doSave);
-nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')doSave();});
 
 /* =========================================================
    ANTI-CHEAT / ANTI-INSPECT
@@ -1491,9 +1558,9 @@ function fbKey(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9_-]/g,'_'
 async function fbReq(path,method,body){
   if(!FIREBASE_URL) return null;
   try{
-    const opt={method:method||'GET'};
+    const opt={method:method||'GET',cache:'no-store'};   // never read a stale cached copy
     if(body!==undefined){ opt.headers={'Content-Type':'application/json'}; opt.body=JSON.stringify(body); }
-    const res=await fetch(fbBase()+path,opt);
+    const res=await fetch(fbBase()+path+'?_='+Date.now(),opt);
     if(!res.ok) return null;
     return await res.json();
   }catch(e){ return null; }
@@ -1514,7 +1581,13 @@ async function checkAdminPass(pw){
 }
 
 /* ---- bans ---- */
-function myKeys(){ const k=[]; if(save.name) k.push(fbKey(save.name)); if(save.device) k.push(fbKey(save.device)); return k; }
+function myKeys(){
+  const k=[];
+  (save.names||[]).forEach(n=>{ if(n) k.push(fbKey(n)); });          // every name they've posted under
+  if(save.name&&k.indexOf(fbKey(save.name))<0) k.push(fbKey(save.name));
+  if(save.device) k.push(fbKey(save.device));
+  return k;
+}
 function fmtLeft(ms){
   if(ms<=0) return '';
   const d=Math.floor(ms/86400000), h=Math.floor(ms/3600000)%24, m=Math.floor(ms/60000)%60, s=Math.floor(ms/1000)%60;
@@ -1526,10 +1599,17 @@ async function checkBan(){
   if(isAdmin) return null;
   const bans=await fbReq('/bans.json'); if(!bans) return null;
   const now=Date.now();
+  const devKey=fbKey(save.device);
   for(const k of myKeys()){
     const b=bans[k];
     if(!b) continue;
-    if(b.until===0||b.until>now) return b;
+    if(b.until===0||b.until>now){
+      // caught by name? pin it to the device too, so a rename doesn't dodge it
+      if(k!==devKey && save.device && !bans[devKey]){
+        fbReq('/bans/'+devKey+'.json','PUT',{who:save.device,until:b.until,reason:b.reason||'',t:Date.now(),via:b.who||k});
+      }
+      return b;
+    }
     fbReq('/bans/'+k+'.json','DELETE');   // expired — tidy up
   }
   return null;
@@ -1551,10 +1631,29 @@ function showBanScreen(b){
 }
 async function enforceBan(){
   const b=await checkBan();
+  const was=!!banInfo;
   banInfo=b;
-  if(b){ if(state==='playing') state='menu'; showBanScreen(b); }
+  if(b){ if(state==='playing') state='menu'; showBanScreen(b); return; }
+  if(was){                                    // unbanned while sitting on the ban screen
+    clearInterval(banTicker);
+    document.getElementById('banScreen').classList.add('hidden');
+    openMenu(); toast('Ban lifted');
+  }
 }
-setInterval(enforceBan,45000);
+
+/* ---- remote refresh: owner reloads everyone's game ---- */
+let pendingReload=false;
+async function pollControl(){
+  const c=await fbReq('/control.json'); if(!c) return;
+  const id=c.reload||0;
+  if(!id||id===save.seenReload) return;
+  save.seenReload=id; await persist();
+  if(isAdmin) return;                          // don't kick yourself out of the panel
+  if(state==='playing'){ pendingReload=true; toast('Update ready — reloading after this run'); }
+  else { toast('Updating…'); setTimeout(()=>location.reload(),1200); }
+}
+// one heartbeat for both, every 12s
+setInterval(function(){ enforceBan(); pollControl(); },12000);
 
 /* ---- grants: coins / high score pushed by the owner ---- */
 async function applyGrants(){
@@ -1572,12 +1671,31 @@ async function applyGrants(){
   if(changed){ await persist(); toast('Owner gift: '+note.trim()); }
 }
 async function registerPlayer(){
-  if(!save.name) return;
-  fbReq('/players/'+fbKey(save.name)+'.json','PUT',{n:save.name,d:save.device,seen:Date.now()});
+  const key=save.name?fbKey(save.name):fbKey(save.device);
+  fbReq('/players/'+key+'.json','PUT',{n:save.name||('('+save.device+')'),d:save.device,seen:Date.now()});
 }
 
 /* ---- admin panel ---- */
 function admSay(msg){ document.getElementById('adminMsg').textContent=msg||''; }
+async function admRenderPlayers(){
+  const el=document.getElementById('playerList');
+  const ps=await fbReq('/players.json');
+  const keys=ps?Object.keys(ps).sort((a,b)=>(ps[b].seen||0)-(ps[a].seen||0)).slice(0,25):[];
+  if(!keys.length){ el.innerHTML='<div class="adm-empty">Nobody registered yet — players appear here after saving a score.</div>'; return; }
+  el.innerHTML='';
+  keys.forEach(k=>{
+    const p=ps[k];
+    const row=document.createElement('div'); row.className='adm-item';
+    const ago=p.seen?Math.max(0,Math.floor((Date.now()-p.seen)/60000)):null;
+    row.innerHTML='<span class="who">'+escapeHtml(String(p.n||k))+'</span>'+
+      '<span class="when">'+(ago===null?'':(ago<60?ago+'m ago':Math.floor(ago/60)+'h ago'))+'</span>';
+    const useN=document.createElement('button'); useN.className='adm-btn'; useN.textContent='Name';
+    useN.addEventListener('click',()=>{ ['banName','coinName','hsName'].forEach(id=>document.getElementById(id).value=String(p.n||k)); admSay('Loaded '+(p.n||k)+'.'); });
+    const useD=document.createElement('button'); useD.className='adm-btn'; useD.textContent='Device';
+    useD.addEventListener('click',()=>{ document.getElementById('banName').value=String(p.d||''); admSay('Loaded device ID — banning this hits the machine, not the name.'); });
+    row.appendChild(useN); row.appendChild(useD); el.appendChild(row);
+  });
+}
 async function admRenderBans(){
   const el=document.getElementById('banList');
   const bans=await fbReq('/bans.json');
@@ -1620,7 +1738,7 @@ async function openAdmin(){
   hud.classList.add('hidden'); flyDock.classList.add('hidden');
   document.getElementById('admDevice').textContent=save.device+(save.name?(' · '+save.name):'');
   admSay('');
-  admRenderBans(); admRenderBoard();
+  admRenderBans(); admRenderBoard(); admRenderPlayers();
 }
 document.getElementById('banDur').addEventListener('change',e=>{
   document.getElementById('banCustom').style.display = e.target.value==='-1' ? '' : 'none';
@@ -1672,7 +1790,14 @@ document.getElementById('wipeGrants').addEventListener('click',async()=>{
   if(!confirm('Cancel all pending coin / score actions?')) return;
   await fbReq('/grants.json','DELETE'); admSay('Pending actions cleared.');
 });
-document.getElementById('admRefresh').addEventListener('click',()=>{ admRenderBans(); admRenderBoard(); admSay('Refreshed.'); });
+document.getElementById('admRefresh').addEventListener('click',()=>{ admRenderBans(); admRenderBoard(); admRenderPlayers(); admSay('Refreshed.'); });
+document.getElementById('forceReload').addEventListener('click',async()=>{
+  if(!confirm("Reload the game for every player?")) return;
+  const stamp=Date.now();
+  const ok=await fbReq('/control.json','PUT',{reload:stamp,t:stamp});
+  save.seenReload=stamp; await persist();          // don't reload yourself
+  admSay(ok===null?'Could not reach the database.':'Everyone reloads within ~12 seconds.');
+});
 document.getElementById('admExit').addEventListener('click',()=>{
   document.getElementById('adminScreen').classList.add('hidden'); openMenu();
 });
@@ -1722,13 +1847,17 @@ document.getElementById('secretCorner').addEventListener('pointerdown',e=>{
 (async function init(){
   await loadSave();
   applySkin(save.skin);
-  if(save.name) nameInput.value=save.name;
   await openMenu();
   await applyGrants();
   document.getElementById('menuCoins').textContent=save.coins;
   bestEl.textContent=save.bestScore;
   registerPlayer();
   enforceBan();
+  if(!save.seenReload){                       // baseline, so an old refresh signal doesn't fire on first load
+    const c=await fbReq('/control.json');
+    if(c&&c.reload){ save.seenReload=c.reload; await persist(); }
+  }
+  if(!save.name && !banInfo) showNameScreen('menu');   // must pick a name before anything else
   if(saveWasTampered){
     document.getElementById('menuCoins').textContent=save.coins;
     setTimeout(()=>toast('Save data invalid — progress reset',true),400);
