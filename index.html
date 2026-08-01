@@ -638,9 +638,9 @@ const SKINS = [
   {id:'solar',  name:'Halo',   cost:22000, color:0xffe14d,emissive:0xc9a400,tag:'Golden one',   perk:'Golden — +1 coin/orb & +8% score',     tr:{coinV:1,score:1.08}},
   {id:'arda',   name:'Arda',   cost:150000,color:0xff7b2e,emissive:0xb33d00,tag:'The wall',      perk:'SMASH — plough through everything for 5s (45s cooldown) & +15% score',
                 tone:0x6a4126, build:{w:1.45,d:1.2,h:1.06}, tr:{score:1.15,smash:{dur:5000,cool:45000}}},
-  {id:'eclipse',name:'Eclipse',cost:750000,color:0x2b1a4d,emissive:0x6a3dff,tag:'The sealed one', perk:'NULLFIELD — expand your domain once per run & +20% score',
+  {id:'eclipse',name:'Eclipse',cost:750000,color:0x2b1a4d,emissive:0x6a3dff,tag:'The sealed one', perk:'NULLFIELD — 240 orbs + 3000m in one run unlocks the domain · +20% score',
                 tone:0xe8cbb0, hair:0xe9eef7, visor:true, coat:true, build:{w:1.02,d:1,h:1.03},
-                tr:{score:1.20,ultimate:{need:25}}},
+                tr:{score:1.20,ultimate:{need:240,dist:3000,flyWeight:0.2}}},
 ];
 
 // accessories — cheap cosmetics layered on any character
@@ -1468,6 +1468,7 @@ function activateFly(){
 function activateUltimate(){
   if(state!=='playing'||!ultCfg||ultUsed||ultActive) return;
   if(ultCharge<ultCfg.need) return;
+  if(ultCfg.dist && distance<ultCfg.dist) return;
   ultUsed=true; ultActive=true; ultCount++;
   playDomain();
 }
@@ -1623,7 +1624,7 @@ function tick(now){
       if(Math.abs(c.position.z)<0.95&&Math.abs(c.position.x-player.position.x)<pr&&(flying||player.position.y<1.6)){
         burst(c.position,currentColor,9); scene.remove(c); coins.splice(i,1); orbCount++; SFX.coin();
         if(!flying && now>=flyCoolUntil) flyCharge=Math.min(flyNeed,flyCharge+1);
-        if(ultCfg && !ultUsed) ultCharge=Math.min(ultCfg.need,ultCharge+1);
+        if(ultCfg && !ultUsed) ultCharge=Math.min(ultCfg.need,ultCharge+(flying?(ultCfg.flyWeight||0.2):1));
       }
     }
 
@@ -1715,8 +1716,17 @@ function updateUltDock(){
   if(state!=='playing'||!ultCfg||ultActive){ d.className='hidden'; return; }
   const f=document.getElementById('ultFill'), l=document.getElementById('ultLabel');
   if(ultUsed){ d.className='spent'; f.style.width='100%'; l.textContent='Nullfield spent'; return; }
-  if(ultCharge>=ultCfg.need){ d.className='ready'; f.style.width='100%'; l.textContent='NULLFIELD ready — Q / tap'; }
-  else { d.className=''; f.style.width=(ultCharge/ultCfg.need*100)+'%'; l.textContent='Nullfield '+ultCharge+'/'+ultCfg.need; }
+  const needD=ultCfg.dist||0;
+  const orbPct=ultCharge/ultCfg.need, distPct=needD?Math.min(1,distance/needD):1;
+  const pct=Math.min(orbPct,distPct);
+  if(orbPct>=1 && distPct>=1){
+    d.className='ready'; f.style.width='100%'; l.textContent='NULLFIELD ready — Q / tap';
+  } else {
+    d.className=''; f.style.width=(pct*100)+'%';
+    l.textContent = orbPct<distPct
+      ? 'Nullfield '+Math.floor(ultCharge)+'/'+ultCfg.need+' orbs'
+      : 'Nullfield '+Math.floor(distance)+'/'+needD+'m';
+  }
 }
 function updateFlyDock(now){
   updateSmashDock(now); updateUltDock();
