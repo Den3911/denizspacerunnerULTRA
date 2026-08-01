@@ -296,6 +296,7 @@
     <div class="menu-sub" style="margin-top:10px">
       <button class="link-btn" id="sfxBtn" style="font-size:11px">SFX: ON</button>
       <button class="link-btn" id="musBtn" style="font-size:11px">Music: ON</button>
+      <button class="link-btn" id="vfxBtn" style="font-size:11px">VFX: ON</button>
     </div>
     <div class="blink">Fill the boost meter mid-run to take flight</div>
     <div class="seltag" style="margin-top:14px;position:relative;z-index:3">Player <b id="menuName">—</b> · <button class="link-btn" id="menuChangeName" style="font-size:11px;letter-spacing:.14em">Change</button></div>
@@ -734,7 +735,7 @@ function sanitiseSave(){
   if(save.name&&save.names.indexOf(save.name)<0) save.names.push(save.name);
   if(save.names.length>12) save.names=save.names.slice(-12);
 }
-let save={coins:0,bestScore:0,upg:{magnet:0,coin:0,boost:0,flytime:0,shield:false,headstart:false,revive:false},skins:['aurora'],skin:'aurora',hats:['none'],hat:'none',level:0,lastDay:0,streak:0,name:'',names:[],device:'',grants:[],seenReload:0,sfx:true,music:true,msn:null};
+let save={coins:0,bestScore:0,upg:{magnet:0,coin:0,boost:0,flytime:0,shield:false,headstart:false,revive:false},skins:['aurora'],skin:'aurora',hats:['none'],hat:'none',level:0,lastDay:0,streak:0,name:'',names:[],device:'',grants:[],seenReload:0,sfx:true,music:true,vfx:true,msn:null};
 let memBoard=[];
 
 // personal progress store: Claude preview -> window.storage, hosted site -> localStorage, else memory
@@ -772,7 +773,7 @@ async function loadSave(){
       // Eclipse was removed — refund anyone who had bought it
       if(Array.isArray(d.skins)&&d.skins.indexOf('eclipse')>=0){ save.coins+=750000; refundedEclipse=true; }
       save.seenReload=d.seenReload||0;
-      save.sfx=d.sfx!==false; save.music=d.music!==false; save.msn=d.msn||null;
+      save.sfx=d.sfx!==false; save.music=d.music!==false; save.vfx=d.vfx!==false; save.msn=d.msn||null;
       save.grants=Array.isArray(d.grants)?d.grants:[];
       sanitiseSave();
     }
@@ -1227,6 +1228,7 @@ function makeCoin(lane,z,y){
   m.position.set(LANES[lane],y!==undefined?y:0.85,z); scene.add(m); coins.push(m);
 }
 function burst(pos,color,n){
+  if(!save.vfx) return;                 // VFX toggle: no particles at all
   for(let i=0;i<n;i++){
     const p=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.12,0.12),new THREE.MeshBasicMaterial({color,transparent:true}));
     p.position.copy(pos);
@@ -1236,6 +1238,7 @@ function burst(pos,color,n){
 }
 // glowing trail puff left behind the player
 function trailPuff(){
+  if(!save.vfx) return;                 // VFX toggle
   const s=0.12+Math.random()*0.12;
   const p=new THREE.Mesh(new THREE.BoxGeometry(s,s,s),new THREE.MeshBasicMaterial({color:currentColor,transparent:true,opacity:0.8}));
   p.position.set(player.position.x+(Math.random()-0.5)*0.3, player.position.y+(Math.random()-0.5)*0.3, player.position.z+0.3);
@@ -1831,9 +1834,17 @@ document.getElementById('msnBack').addEventListener('click',openMenu);
 function paintSoundBtns(){
   document.getElementById('sfxBtn').textContent='SFX: '+(save.sfx?'ON':'OFF');
   document.getElementById('musBtn').textContent='Music: '+(save.music?'ON':'OFF');
+  document.getElementById('vfxBtn').textContent='VFX: '+(save.vfx?'ON':'OFF');
 }
 document.getElementById('sfxBtn').addEventListener('click',()=>{ save.sfx=!save.sfx; persist(); paintSoundBtns(); if(save.sfx)SFX.buy(); });
 document.getElementById('musBtn').addEventListener('click',()=>{ save.music=!save.music; persist(); paintSoundBtns(); if(!save.music)musicStop(); });
+document.getElementById('vfxBtn').addEventListener('click',()=>{
+  save.vfx=!save.vfx; persist(); paintSoundBtns();
+  if(!save.vfx){                                  // clear anything already on screen
+    particles.forEach(x=>scene.remove(x)); particles.length=0;
+    trail.forEach(x=>scene.remove(x)); trail.length=0;
+  }
+});
 document.getElementById('lvlBack').addEventListener('click',openMenu);
 document.getElementById('shopBack').addEventListener('click',openMenu);
 document.getElementById('tabUpg').addEventListener('click',()=>{shopTab='upg';renderShop();});
