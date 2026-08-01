@@ -242,65 +242,6 @@
   .adm-item .when{color:var(--dim);font-size:11px;}
   .adm-empty{color:var(--dim);font-size:12px;padding:8px;letter-spacing:.08em;}
 
-  /* ===== NULLFIELD domain cutscene ===== */
-  #domain{position:fixed;inset:0;z-index:75;pointer-events:none;overflow:hidden;
-    display:flex;align-items:center;justify-content:center;}
-  #domain.hidden{display:none;}
-  #domFlash{position:absolute;inset:0;background:#fff;opacity:0;animation:domFlash 3.9s ease-out forwards;}
-  @keyframes domFlash{0%{opacity:0}3%{opacity:1}12%{opacity:.15}100%{opacity:0}}
-  #domCore{position:absolute;left:50%;top:50%;width:22vmax;height:22vmax;margin:-11vmax 0 0 -11vmax;border-radius:50%;
-    background:radial-gradient(circle,#fff 0%,#c9b8ff 18%,#5b34c9 42%,#160a33 70%,#05010f 100%);
-    transform:scale(0);animation:domCore 3.9s cubic-bezier(.16,.9,.3,1) forwards;
-    box-shadow:0 0 140px rgba(122,92,255,.9);}
-  @keyframes domCore{0%{transform:scale(0);opacity:0}
-    8%{transform:scale(.28);opacity:1}
-    38%{transform:scale(9);opacity:1}
-    82%{transform:scale(9);opacity:1}
-    100%{transform:scale(11);opacity:0}}
-  .domRing{position:absolute;left:50%;top:50%;width:12vmax;height:12vmax;margin:-6vmax 0 0 -6vmax;border-radius:50%;
-    border:2px solid rgba(190,170,255,.85);transform:scale(0);opacity:0;
-    animation:domRing 2.4s cubic-bezier(.1,.8,.3,1) var(--d) forwards;}
-  @keyframes domRing{0%{transform:scale(.2);opacity:0}
-    12%{opacity:.95}100%{transform:scale(12);opacity:0}}
-  #domGrid{position:absolute;inset:-30%;opacity:0;
-    background-image:linear-gradient(rgba(150,120,255,.30) 1px,transparent 1px),
-                     linear-gradient(90deg,rgba(150,120,255,.30) 1px,transparent 1px);
-    background-size:64px 64px;
-    animation:domGrid 3.9s ease-out forwards;}
-  @keyframes domGrid{0%{opacity:0;transform:perspective(600px) rotateX(70deg) scale(2)}
-    35%{opacity:.85}
-    100%{opacity:0;transform:perspective(600px) rotateX(70deg) scale(.4)}}
-  #domText{position:relative;z-index:3;text-align:center;opacity:0;animation:domText 3.9s ease-out forwards;}
-  @keyframes domText{0%,22%{opacity:0;transform:scale(1.5);filter:blur(9px)}
-    34%{opacity:1;transform:scale(1);filter:blur(0)}
-    84%{opacity:1}100%{opacity:0}}
-  .domSub{font-size:clamp(10px,2.1vw,15px);letter-spacing:.62em;color:#c8b6ff;text-transform:uppercase;padding-left:.6em;}
-  .domName{font-family:'Syncopate',sans-serif;font-weight:700;font-size:clamp(34px,10vw,96px);color:#fff;
-    letter-spacing:.05em;margin-top:8px;text-shadow:0 0 34px rgba(150,110,255,.95),0 0 90px rgba(90,50,220,.7);}
-  .domLine{width:min(360px,70vw);height:1px;margin:16px auto 0;
-    background:linear-gradient(90deg,transparent,rgba(200,180,255,.9),transparent);}
-  .domTag{margin-top:14px;font-size:clamp(10px,2vw,13px);letter-spacing:.34em;color:#8f7fc4;text-transform:uppercase;}
-  #domScore{position:absolute;bottom:12vh;z-index:3;font-weight:900;font-size:clamp(22px,6vw,50px);
-    letter-spacing:.05em;color:#ffe14d;opacity:0;text-shadow:0 0 30px rgba(255,225,77,.8);
-    animation:domScore 3.9s ease-out forwards;}
-  @keyframes domScore{0%,52%{opacity:0;transform:translateY(18px)}
-    62%{opacity:1;transform:translateY(0)}88%{opacity:1}100%{opacity:0}}
-
-  /* ultimate meter */
-  #ultDock{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);z-index:6;width:min(280px,72vw);
-    display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none;}
-  #ultDock.hidden{display:none;}
-  #ultBar{width:100%;height:11px;border:1px solid rgba(255,255,255,.2);overflow:hidden;background:rgba(0,0,0,.45);
-    clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%);}
-  #ultFill{height:100%;width:0%;background:linear-gradient(90deg,#6a3dff,#c9b8ff);transition:width .12s linear;}
-  #ultLabel{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);}
-  #ultDock.ready{pointer-events:auto;cursor:pointer;}
-  #ultDock.ready #ultBar{border-color:#b49bff;animation:ultpulse 1s ease-in-out infinite;}
-  #ultDock.ready #ultLabel{color:#c9b8ff;}
-  #ultDock.spent #ultFill{background:linear-gradient(90deg,#3a3350,#4b4266);}
-  #ultDock.spent #ultLabel{color:#6b6488;}
-  @keyframes ultpulse{50%{box-shadow:0 0 26px rgba(150,110,255,.9)}}
-
   /* pranks */
   #prankVeil{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:80;transition:opacity .7s ease;}
   body.pk-flip,body.pk-mirror{transition:transform .8s ease;}
@@ -359,7 +300,7 @@
     <div class="blink">Fill the boost meter mid-run to take flight</div>
     <div class="seltag" style="margin-top:14px;position:relative;z-index:3">Player <b id="menuName">—</b> · <button class="link-btn" id="menuChangeName" style="font-size:11px;letter-spacing:.14em">Change</button></div>
   </div>
-  <div class="keys">&larr; &rarr; / <span>A D</span> move &nbsp;&middot;&nbsp; <span>SPACE</span> / &uarr; jump &nbsp;&middot;&nbsp; <span>&darr;</span> / S slide &nbsp;&middot;&nbsp; <span>F</span> fly &nbsp;&middot;&nbsp; <span>R</span> smash &nbsp;&middot;&nbsp; <span>Q</span> domain</div>
+  <div class="keys">&larr; &rarr; / <span>A D</span> move &nbsp;&middot;&nbsp; <span>SPACE</span> / &uarr; jump &nbsp;&middot;&nbsp; <span>&darr;</span> / S slide &nbsp;&middot;&nbsp; <span>F</span> fly &nbsp;&middot;&nbsp; <span>R</span> smash (Arda)</div>
   <div class="board" id="menuBoard"></div>
 </div>
 
@@ -383,12 +324,6 @@
     <button class="btn ghost" id="nmCancel">Back</button>
   </div>
   <div class="note">3–8 characters · letters and numbers</div>
-</div>
-
-<!-- ultimate meter (Eclipse only) -->
-<div id="ultDock" class="hidden">
-  <div id="ultBar"><div id="ultFill"></div></div>
-  <div id="ultLabel">Nullfield</div>
 </div>
 
 <!-- smash meter (Arda only) -->
@@ -586,24 +521,6 @@
   <div class="lockmsg">Contact the owner if you think this is a mistake.</div>
 </div>
 
-<!-- ===== NULLFIELD CUTSCENE ===== -->
-<div id="domain" class="hidden">
-  <div id="domFlash"></div>
-  <div id="domCore"></div>
-  <div class="domRing" style="--d:0s"></div>
-  <div class="domRing" style="--d:.22s"></div>
-  <div class="domRing" style="--d:.44s"></div>
-  <div class="domRing" style="--d:.66s"></div>
-  <div id="domGrid"></div>
-  <div id="domText">
-    <div class="domSub">DOMAIN &nbsp;·&nbsp; EXPANSION</div>
-    <div class="domName">NULLFIELD</div>
-    <div class="domLine"></div>
-    <div class="domTag">Nothing reaches you here</div>
-  </div>
-  <div id="domScore"></div>
-</div>
-
 <div id="prankVeil"></div>
 <div class="toast" id="toast"></div>
 
@@ -638,9 +555,6 @@ const SKINS = [
   {id:'solar',  name:'Halo',   cost:22000, color:0xffe14d,emissive:0xc9a400,tag:'Golden one',   perk:'Golden — +1 coin/orb & +8% score',     tr:{coinV:1,score:1.08}},
   {id:'arda',   name:'Arda',   cost:150000,color:0xff7b2e,emissive:0xb33d00,tag:'The wall',      perk:'SMASH — plough through everything for 5s (45s cooldown) & +15% score',
                 tone:0x6a4126, build:{w:1.45,d:1.2,h:1.06}, tr:{score:1.15,smash:{dur:5000,cool:45000}}},
-  {id:'eclipse',name:'Eclipse',cost:750000,color:0x2b1a4d,emissive:0x6a3dff,tag:'The sealed one', perk:'NULLFIELD — 240 orbs + 3000m in one run unlocks the domain · +20% score',
-                tone:0xe8cbb0, hair:0xe9eef7, visor:true, coat:true, build:{w:1.02,d:1,h:1.03},
-                tr:{score:1.20,ultimate:{need:240,dist:3000,flyWeight:0.2}}},
 ];
 
 // accessories — cheap cosmetics layered on any character
@@ -836,7 +750,7 @@ async function kvSet(key,val){
   memKV[key]=val;
 }
 
-let saveWasTampered=false;
+let saveWasTampered=false, refundedEclipse=false;
 async function loadSave(){
   // bin any save from a previous season so it can never come back
   OLD_SAVE_KEYS.forEach(k=>{
@@ -855,6 +769,8 @@ async function loadSave(){
       save.lastDay=d.lastDay||0; save.streak=d.streak||0;
       save.name=d.name||''; save.device=d.device||'';
       save.names=Array.isArray(d.names)?d.names:(d.name?[d.name]:[]);
+      // Eclipse was removed — refund anyone who had bought it
+      if(Array.isArray(d.skins)&&d.skins.indexOf('eclipse')>=0){ save.coins+=750000; refundedEclipse=true; }
       save.seenReload=d.seenReload||0;
       save.sfx=d.sfx!==false; save.music=d.music!==false; save.msn=d.msn||null;
       save.grants=Array.isArray(d.grants)?d.grants:[];
@@ -1081,25 +997,6 @@ function buildCharacter(s){
     const sole=new THREE.Mesh(new THREE.BoxGeometry(0.10,0.022,0.21),outfit);
     sole.position.set(0,-0.305,0.05); shin.add(sole);
     g.add(thigh); thigh.userData.shin=shin; return thigh;
-  }
-  // --- optional character extras ---
-  if(s.visor){
-    const vis=new THREE.Mesh(new THREE.BoxGeometry(0.30,0.075,0.055),
-      new THREE.MeshStandardMaterial({color:0x120b26,emissive:s.emissive||0x6a3dff,emissiveIntensity:0.45,roughness:0.25,metalness:0.5}));
-    vis.position.set(0,0.006,0.108); headG.add(vis);
-    const edge=new THREE.Mesh(new THREE.BoxGeometry(0.31,0.012,0.03),
-      new THREE.MeshBasicMaterial({color:0xc9b8ff})); edge.position.set(0,0.046,0.118); headG.add(edge);
-    [-0.128,0.128].forEach(x=>{ const st=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.10),
-      new THREE.MeshStandardMaterial({color:0x120b26,roughness:0.4})); st.position.set(x,0.01,0.04); headG.add(st); });
-  }
-  if(s.coat){
-    const coatMat=new THREE.MeshStandardMaterial({color:s.color,emissive:s.emissive,emissiveIntensity:0.16,roughness:0.72,side:THREE.DoubleSide});
-    const sh=new THREE.Shape();
-    sh.moveTo(-0.20,0); sh.lineTo(0.20,0); sh.lineTo(0.26,-0.70); sh.lineTo(-0.26,-0.70); sh.lineTo(-0.20,0);
-    const coat=new THREE.Mesh(new THREE.ShapeGeometry(sh),coatMat);
-    coat.position.set(0,0.60,-0.11); coat.rotation.x=0.16; g.add(coat);
-    const collar=new THREE.Mesh(new THREE.CylinderGeometry(0.115,0.10,0.15,12,1,true),coatMat);
-    collar.position.set(0,0.665,-0.005); g.add(collar);
   }
   const armL=arm(-1), armR=arm(1), legL=leg(-1), legR=leg(1);
   return {group:g, torso:chest, head:headG,
@@ -1364,14 +1261,6 @@ let flyCharge=0,flying=false,flyUntil=0,flyCoinTimer=0,flyLane=1,flyAnnounced=fa
 let flyNeed=22,flyMs=6000,revivedThisRun=false;
 let trSpd=1,trAccel=1,trCoinR=1,trScore=1,trSlowmo=1,bonusScore=0;   // character-trait modifiers
 let smashCfg=null,smashing=false,smashUntil=0,smashCoolUntil=0,smashCount=0;  // Arda's ability
-let ultCfg=null,ultUsed=false,ultActive=false,ultCharge=0,ultCount=0;         // Eclipse's ultimate
-
-/* How NULLFIELD scores. 'leader' = jump ahead of the week's #1 (what a domain
-   expansion should feel like, but it does flatten the leaderboard).
-   'flat'   = a fixed bonus instead, if you'd rather keep the board competitive. */
-const NULLFIELD_MODE='leader';   // 'leader' | 'flat'
-const NULLFIELD_LEAD=5000;       // points clear of the current #1
-const NULLFIELD_FLAT=8000;       // used when mode is 'flat'
 let slow=1,slowUntil=0,animScale=1;                                   // near-miss slow-mo
 const FLY_NEED=22, FLY_MS=6000, FLY_Y=2.4, FLY_COOL=9000;
 let lastT=performance.now();
@@ -1399,7 +1288,6 @@ function resetRun(){
   flyNeed=Math.max(6,FLY_NEED-3*save.upg.boost+(tr.flyNeed||0)+(ht.flyNeed||0));
   flyMs=FLY_MS+1000*save.upg.flytime+(ht.flyMs||0);
   smashCfg=tr.smash||null; smashing=false; smashUntil=0; smashCoolUntil=0; smashCount=0;
-  ultCfg=tr.ultimate||null; ultUsed=false; ultActive=false; ultCharge=0; ultCount=0;
   slow=1; slowUntil=0; bonusScore=0;
   ghostScore=0; ghostPhase=0; if(ghost){ghost.group.position.set(0,0.6,2);ghost.group.visible=false;}
   shieldActive=!!save.upg.shield; shieldMesh.visible=shieldActive; invulnUntil=0;
@@ -1465,44 +1353,6 @@ function activateFly(){
   if(state!=='playing'||flying||flyCharge<flyNeed||performance.now()<flyCoolUntil) return;
   startFlight(flyMs,true);
 }
-function activateUltimate(){
-  if(state!=='playing'||!ultCfg||ultUsed||ultActive) return;
-  if(ultCharge<ultCfg.need) return;
-  if(ultCfg.dist && distance<ultCfg.dist) return;
-  ultUsed=true; ultActive=true; ultCount++;
-  playDomain();
-}
-async function playDomain(){
-  const el=document.getElementById('domain');
-  // restart the CSS animations cleanly each time
-  el.classList.add('hidden'); void el.offsetWidth; el.classList.remove('hidden');
-  document.getElementById('ultDock').className='hidden';
-  SFX.domain();
-
-  // the world empties out while the domain is open
-  obstacles.forEach(o=>scene.remove(o)); obstacles.length=0;
-  coins.forEach(c=>scene.remove(c)); coins.length=0;
-  spawnZ=-40; invulnUntil=performance.now()+6000;
-  burst(player.position.clone(),0xc9b8ff,40);
-  setTimeout(()=>burst(player.position.clone(),0x6a3dff,30),320);
-
-  // work out the target score, then fold the difference into the run's bonus
-  let target;
-  if(NULLFIELD_MODE==='flat'){ target=score+NULLFIELD_FLAT; }
-  else {
-    let top=Math.max(ghostTarget||0,save.bestScore||0,score);
-    try{ const b=await loadBoard(); if(b.length) top=Math.max(top,b[0].s); }catch(e){}
-    target=top+NULLFIELD_LEAD;
-  }
-  if(target>score){
-    const raw=(distance+orbCount*15+bonusScore);
-    bonusScore += (target/(trScore||1)) - raw;    // score recomputes to exactly `target`
-  }
-  const shown=Math.max(target,score);
-  document.getElementById('domScore').textContent='SCORE → '+shown;
-
-  setTimeout(()=>{ el.classList.add('hidden'); ultActive=false; toast('Domain closed'); },3900);
-}
 function activateSmash(){
   if(state!=='playing'||!smashCfg||smashing||flying) return;
   const now=performance.now();
@@ -1520,7 +1370,6 @@ addEventListener('keydown',e=>{
   else if(e.key==='ArrowDown'||e.key==='s'||e.key==='S'){e.preventDefault();slide();}
   else if(e.key==='f'||e.key==='F'){e.preventDefault();activateFly();}
   else if(e.key==='r'||e.key==='R'){e.preventDefault();activateSmash();}
-  else if(e.key==='q'||e.key==='Q'){e.preventDefault();activateUltimate();}
 });
 let tx=0,ty=0,tt=0;
 renderer.domElement.addEventListener('touchstart',e=>{const t=e.changedTouches[0];tx=t.clientX;ty=t.clientY;tt=Date.now();},{passive:true});
@@ -1624,7 +1473,6 @@ function tick(now){
       if(Math.abs(c.position.z)<0.95&&Math.abs(c.position.x-player.position.x)<pr&&(flying||player.position.y<1.6)){
         burst(c.position,currentColor,9); scene.remove(c); coins.splice(i,1); orbCount++; SFX.coin();
         if(!flying && now>=flyCoolUntil) flyCharge=Math.min(flyNeed,flyCharge+1);
-        if(ultCfg && !ultUsed) ultCharge=Math.min(ultCfg.need,ultCharge+(flying?(ultCfg.flyWeight||0.2):1));
       }
     }
 
@@ -1711,25 +1559,8 @@ function updateSmashDock(now){
     d.className='ready'; f.style.width='100%'; l.textContent='Smash ready — R / tap';
   }
 }
-function updateUltDock(){
-  const d=document.getElementById('ultDock');
-  if(state!=='playing'||!ultCfg||ultActive){ d.className='hidden'; return; }
-  const f=document.getElementById('ultFill'), l=document.getElementById('ultLabel');
-  if(ultUsed){ d.className='spent'; f.style.width='100%'; l.textContent='Nullfield spent'; return; }
-  const needD=ultCfg.dist||0;
-  const orbPct=ultCharge/ultCfg.need, distPct=needD?Math.min(1,distance/needD):1;
-  const pct=Math.min(orbPct,distPct);
-  if(orbPct>=1 && distPct>=1){
-    d.className='ready'; f.style.width='100%'; l.textContent='NULLFIELD ready — Q / tap';
-  } else {
-    d.className=''; f.style.width=(pct*100)+'%';
-    l.textContent = orbPct<distPct
-      ? 'Nullfield '+Math.floor(ultCharge)+'/'+ultCfg.need+' orbs'
-      : 'Nullfield '+Math.floor(distance)+'/'+needD+'m';
-  }
-}
 function updateFlyDock(now){
-  updateSmashDock(now); updateUltDock();
+  updateSmashDock(now);
   if(state!=='playing'){ flyDock.className='hidden'; return; }
   if(flying){
     flyDock.className='active';
@@ -1754,7 +1585,6 @@ function updateFlyDock(now){
 }
 flyDock.addEventListener('pointerdown',e=>{e.preventDefault();activateFly();});
 document.getElementById('smashDock').addEventListener('pointerdown',e=>{e.preventDefault();activateSmash();});
-document.getElementById('ultDock').addEventListener('pointerdown',e=>{e.preventDefault();activateUltimate();});
 
 function startRun(){
   if(banInfo){ showBanScreen(banInfo); return; }
@@ -1771,7 +1601,6 @@ function startRun(){
 function endRun(){
   state='over'; shake=0.5; flying=false; smashing=false; jet.visible=false;
   flyDock.classList.add('hidden'); document.getElementById('smashDock').className='hidden';
-  document.getElementById('ultDock').className='hidden'; document.getElementById('domain').classList.add('hidden');
   musicStop(); SFX.crash();
   if(ghost) ghost.group.visible=false;
   burst(player.position.clone(),0xff2e7e,26);
@@ -1896,8 +1725,6 @@ async function openMenu(){
   state='menu';
   document.getElementById('flyDock').classList.add('hidden');
   document.getElementById('smashDock').className='hidden';
-  document.getElementById('ultDock').className='hidden';
-  document.getElementById('domain').classList.add('hidden');
   document.getElementById('menuCoins').textContent=save.coins;
   document.getElementById('selLevelName').textContent=(LEVELS[save.level]||LEVELS[0]).name;
   const b=await loadBoard(); renderBoard(document.getElementById('menuBoard'),b,-1);
@@ -2101,13 +1928,6 @@ const SFX={
   honk:()=>{ tone({f:233,type:'sawtooth',dur:0.28,vol:0.2}); tone({f:185,type:'sawtooth',dur:0.34,vol:0.2,delay:0.22}); },
   spook:()=>{ tone({f:190,f2:60,type:'sine',dur:1.6,vol:0.12}); noiseHit(1.4,0.06,500,120); },
   smash:()=>{ tone({f:90,f2:40,type:'sawtooth',dur:0.5,vol:0.24}); noiseHit(0.45,0.26,900,140); },
-  domain:()=>{
-    tone({f:60,f2:1400,type:'sine',dur:1.5,vol:0.20});                 // rising swell
-    noiseHit(1.6,0.14,300,5000);
-    [0,0.06,0.12].forEach((d,i)=>tone({f:[880,1320,1760][i],type:'triangle',dur:1.0,vol:0.11,delay:1.3+d}));
-    tone({f:150,f2:38,type:'sawtooth',dur:1.8,vol:0.22,delay:1.35});   // the drop
-    setTimeout(()=>noiseHit(1.2,0.16,1800,120),1350);
-  },
   crunch:()=>noiseHit(0.16,0.2,2200,300),
 };
 
@@ -2601,6 +2421,10 @@ document.getElementById('secretCorner').addEventListener('pointerdown',e=>{
     if(c&&c.reload){ save.seenReload=c.reload; await persist(); }
   }
   if(!save.name && !banInfo) showNameScreen('menu');   // must pick a name before anything else
+  if(refundedEclipse){
+    document.getElementById('menuCoins').textContent=save.coins;
+    setTimeout(()=>toast('Eclipse removed — 750,000 coins refunded'),700);
+  }
   if(saveWasTampered){
     document.getElementById('menuCoins').textContent=save.coins;
     setTimeout(()=>toast('Save data invalid — progress reset',true),400);
