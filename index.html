@@ -122,6 +122,24 @@
   #flyDock.cooldown #flyLabel{color:#cc9a8a;}
   @keyframes flypulse{50%{box-shadow:0 0 26px rgba(255,225,77,.85)}}
 
+  /* smash meter (Arda) */
+  #smashDock{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);z-index:6;width:min(280px,72vw);
+    display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none;}
+  #smashDock.hidden{display:none;}
+  #smashBar{width:100%;height:11px;border:1px solid rgba(255,255,255,.2);overflow:hidden;background:rgba(0,0,0,.45);
+    clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%);}
+  #smashFill{height:100%;width:0%;background:linear-gradient(90deg,#ff7b2e,#ff2b34);transition:width .12s linear;}
+  #smashLabel{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);}
+  #smashDock.ready{pointer-events:auto;cursor:pointer;}
+  #smashDock.ready #smashBar{border-color:#ff7b2e;animation:smpulse 1s ease-in-out infinite;}
+  #smashDock.ready #smashLabel{color:#ff9d5c;}
+  #smashDock.active #smashFill{background:linear-gradient(90deg,#fff0c2,#ff7b2e);}
+  #smashDock.active #smashBar{border-color:#ffd23b;box-shadow:0 0 22px rgba(255,123,46,.7);}
+  #smashDock.active #smashLabel{color:#ffd23b;}
+  #smashDock.cooldown #smashFill{background:linear-gradient(90deg,#4a3a34,#6b4a3a);}
+  #smashDock.cooldown #smashLabel{color:#9a7a68;}
+  @keyframes smpulse{50%{box-shadow:0 0 24px rgba(255,123,46,.8)}}
+
   .panel-head{display:flex;align-items:center;justify-content:space-between;width:min(620px,94vw);margin-bottom:14px;}
   .panel-head.sticky{position:sticky;top:-20px;z-index:6;padding:14px 0 12px;
     background:linear-gradient(rgba(4,4,12,.99),rgba(4,4,12,.99) 78%,transparent);}
@@ -282,7 +300,7 @@
     <div class="blink">Fill the boost meter mid-run to take flight</div>
     <div class="seltag" style="margin-top:14px;position:relative;z-index:3">Player <b id="menuName">—</b> · <button class="link-btn" id="menuChangeName" style="font-size:11px;letter-spacing:.14em">Change</button></div>
   </div>
-  <div class="keys">&larr; &rarr; / <span>A D</span> move &nbsp;&middot;&nbsp; <span>SPACE</span> / &uarr; jump &nbsp;&middot;&nbsp; <span>&darr;</span> / S slide &nbsp;&middot;&nbsp; <span>F</span> / tap meter to fly</div>
+  <div class="keys">&larr; &rarr; / <span>A D</span> move &nbsp;&middot;&nbsp; <span>SPACE</span> / &uarr; jump &nbsp;&middot;&nbsp; <span>&darr;</span> / S slide &nbsp;&middot;&nbsp; <span>F</span> fly &nbsp;&middot;&nbsp; <span>R</span> smash (Arda)</div>
   <div class="board" id="menuBoard"></div>
 </div>
 
@@ -306,6 +324,12 @@
     <button class="btn ghost" id="nmCancel">Back</button>
   </div>
   <div class="note">3–8 characters · letters and numbers</div>
+</div>
+
+<!-- smash meter (Arda only) -->
+<div id="smashDock" class="hidden">
+  <div id="smashBar"><div id="smashFill"></div></div>
+  <div id="smashLabel">Smash</div>
 </div>
 
 <!-- fly / boost meter (during play) -->
@@ -529,18 +553,22 @@ const SKINS = [
   {id:'void',   name:'Wraith', cost:10000, color:0xb24bff,emissive:0x6a1fb0,tag:'Shadow flux',  perk:'Untouchable — longer near-miss slow-mo',tr:{slowmo:1.7}},
   {id:'crimson',name:'Ruin',   cost:15000, color:0xff3b3b,emissive:0xb01f1f,tag:'Red alert',    perk:'Daredevil — +15% score',               tr:{score:1.15}},
   {id:'solar',  name:'Halo',   cost:22000, color:0xffe14d,emissive:0xc9a400,tag:'Golden one',   perk:'Golden — +1 coin/orb & +8% score',     tr:{coinV:1,score:1.08}},
+  {id:'arda',   name:'Arda',   cost:150000,color:0xff7b2e,emissive:0xb33d00,tag:'The wall',      perk:'SMASH — plough through everything for 5s (45s cooldown) & +15% score',
+                tone:0x6a4126, build:{w:1.45,d:1.2,h:1.06}, tr:{score:1.15,smash:{dur:5000,cool:45000}}},
 ];
 
 // accessories — cheap cosmetics layered on any character
+/* Accessories are no longer just cosmetic — each carries a perk that stacks
+   with your character's. Prices are tuned to how strong the perk is.        */
 const HATS = [
-  {id:'none',   name:'None',        cost:0},
-  {id:'shades', name:'Shades',      cost:250},
-  {id:'antenna',name:'Antenna',     cost:400},
-  {id:'phones', name:'Headphones',  cost:650},
-  {id:'cape',   name:'Cape',        cost:900},
-  {id:'tophat', name:'Top Hat',     cost:1200},
-  {id:'halo',   name:'Halo Ring',   cost:1600},
-  {id:'crown',  name:'Crown',       cost:2400},
+  {id:'none',   name:'None',       cost:0,     perk:'No bonus',                  tr:{}},
+  {id:'shades', name:'Shades',     cost:600,   perk:'+4% score',                 tr:{score:1.04}},
+  {id:'antenna',name:'Antenna',    cost:1400,  perk:'+40% orb magnet range',     tr:{coinR:1.4}},
+  {id:'phones', name:'Headphones', cost:2600,  perk:'Boost fills 2 orbs sooner', tr:{flyNeed:-2}},
+  {id:'cape',   name:'Cape',       cost:4000,  perk:'+8% score',                 tr:{score:1.08}},
+  {id:'tophat', name:'Top Hat',    cost:7000,  perk:'+1 coin per orb',           tr:{coinV:1}},
+  {id:'halo',   name:'Halo Ring',  cost:11000, perk:'+10% score & +1s fly time', tr:{score:1.10,flyMs:1000}},
+  {id:'crown',  name:'Crown',      cost:18000, perk:'+15% score',                tr:{score:1.15}},
 ];
 
 const UPG = {
@@ -893,27 +921,32 @@ function capsule(r,len,mat,seg){
 }
 function buildCharacter(s){
   const g=new THREE.Group();
+  const B=s.build||{};
+  const W=B.w||1, D=B.d||1, H=B.h||1;          // per-character build: width, depth, height
   const outfit=new THREE.MeshStandardMaterial({color:s.color,emissive:s.emissive,emissiveIntensity:0.22,roughness:0.62,metalness:0.08});
   const outfitDark=new THREE.MeshStandardMaterial({color:new THREE.Color(s.color).multiplyScalar(0.55),emissive:s.emissive,emissiveIntensity:0.12,roughness:0.7});
   const pants=new THREE.MeshStandardMaterial({color:0x333a4a,roughness:0.85});
   const shoe=new THREE.MeshStandardMaterial({color:0x1b1e26,roughness:0.7});
-  const tone=new THREE.MeshStandardMaterial({color:0xecbb96,roughness:0.78});
-  const hair=new THREE.MeshStandardMaterial({color:0x2a2119,roughness:0.9});
+  const tone=new THREE.MeshStandardMaterial({color:(s.tone!==undefined?s.tone:0xecbb96),roughness:0.78});
+  const hair=new THREE.MeshStandardMaterial({color:(s.hair!==undefined?s.hair:0x2a2119),roughness:0.9});
   charMain=outfit;
+  g.scale.y=H;
 
   // --- torso: tapered chest into a narrower waist ---
   const chest=new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.155,0.34,12),outfit);
-  chest.scale.z=0.72; chest.position.y=0.46; g.add(chest);
+  chest.scale.set(W,1,0.72*D); chest.position.y=0.46; g.add(chest);
   const shoulders=capsule(0.115,0.30,outfit);
-  shoulders.rotation.z=Math.PI/2; shoulders.scale.z=0.78; shoulders.position.y=0.60; g.add(shoulders);
+  shoulders.rotation.z=Math.PI/2; shoulders.scale.set(1,W,0.78*D); shoulders.position.y=0.60; g.add(shoulders);
   const waist=new THREE.Mesh(new THREE.CylinderGeometry(0.155,0.16,0.16,12),outfitDark);
-  waist.scale.z=0.72; waist.position.y=0.22; g.add(waist);
+  waist.scale.set(W,1,0.72*D); waist.position.y=0.22; g.add(waist);
   const hips=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.155,0.16,12),pants);
-  hips.scale.z=0.74; hips.position.y=0.08; g.add(hips);
+  hips.scale.set(W,1,0.74*D); hips.position.y=0.08; g.add(hips);
 
   // --- head: neck, rounded skull, face features ---
   const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.065,0.09,8),tone); neck.position.y=0.685; g.add(neck);
-  const headG=new THREE.Group(); headG.position.y=0.80; g.add(headG);
+  const headG=new THREE.Group(); headG.position.y=0.80;
+  if(W>1) headG.scale.setScalar(1+(W-1)*0.28);
+  g.add(headG);
   const skull=new THREE.Mesh(new THREE.SphereGeometry(0.135,16,14),tone);
   skull.scale.set(0.92,1.06,0.95); headG.add(skull);
   const jaw=new THREE.Mesh(new THREE.SphereGeometry(0.10,12,10),tone);
@@ -937,7 +970,8 @@ function buildCharacter(s){
 
   // --- limbs: real elbow / knee joints so poses bend ---
   function arm(side){
-    const upper=new THREE.Group(); upper.position.set(side*0.165,0.605,0);
+    const upper=new THREE.Group(); upper.position.set(side*0.165*W,0.605,0);
+    upper.scale.set(W>1?1+(W-1)*0.7:1,1,W>1?1+(W-1)*0.7:1);
     const uMesh=capsule(0.048,0.20,outfit,8);
     uMesh.position.y=-0.125; upper.add(uMesh);
     const sh=new THREE.Mesh(new THREE.SphereGeometry(0.062,10,8),outfit); upper.add(sh);
@@ -949,7 +983,8 @@ function buildCharacter(s){
     g.add(upper); upper.userData.fore=fore; return upper;
   }
   function leg(side){
-    const thigh=new THREE.Group(); thigh.position.set(side*0.085,0.05,0);
+    const thigh=new THREE.Group(); thigh.position.set(side*0.085*W,0.05,0);
+    thigh.scale.set(W>1?1+(W-1)*0.6:1,1,W>1?1+(W-1)*0.6:1);
     const tMesh=capsule(0.062,0.24,pants,8);
     tMesh.position.y=-0.16; thigh.add(tMesh);
     const shin=new THREE.Group(); shin.position.y=-0.31; thigh.add(shin);
@@ -1134,12 +1169,13 @@ const COIN_GEO=new THREE.TorusGeometry(0.32,0.12,8,16);
 
 // collision bands only — visuals are built per type below
 const OBS_DEF={
-  low: {bottom:0,    top:0.6},  // hurdle / road barrier — jump over
+  low: {bottom:0,    top:0.76}, // hurdle / road barrier — jump over
   wall:{bottom:0,    top:2.4},  // truck — switch lane
   high:{bottom:0.75, top:2.3},  // overhead sign — slide under
 };
 
 // shared obstacle materials
+const matBarR =new THREE.MeshStandardMaterial({color:0xff2b34,emissive:0xff0f22,emissiveIntensity:0.85,roughness:0.4,flatShading:true});
 const matBarY =new THREE.MeshStandardMaterial({color:0xf2b01e,roughness:0.6,flatShading:true});
 const matBarW =new THREE.MeshStandardMaterial({color:0xe8e8e8,roughness:0.7,flatShading:true});
 const matSteel=new THREE.MeshStandardMaterial({color:0x33363d,roughness:0.7,metalness:0.3,flatShading:true});
@@ -1149,11 +1185,13 @@ const matSign =new THREE.MeshStandardMaterial({color:0x2bbf5a,emissive:0x0e3a1c,
 const wheelGeo=new THREE.CylinderGeometry(0.22,0.22,0.18,10);
 const TRUCK_COLORS=[0xc8413b,0x2f6fb0,0xe0a02a,0x3a9d6a,0x8a5cc0,0xcccccc];
 
-function buildLow(){ // road barrier / hurdle
+function buildLow(){ // road barrier / hurdle — bigger and red-glowing
   const g=new THREE.Group();
-  const bar=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.26,0.34),matBarY); bar.position.y=0.5; g.add(bar);
-  const bar2=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.14,0.36),matBarW); bar2.position.y=0.24; g.add(bar2);
-  [-0.78,0.78].forEach(x=>{const leg=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.62,0.12),matSteel);leg.position.set(x,0.31,0);g.add(leg);});
+  const bar=new THREE.Mesh(new THREE.BoxGeometry(1.95,0.32,0.40),matBarR); bar.position.y=0.60; g.add(bar);
+  const bar2=new THREE.Mesh(new THREE.BoxGeometry(1.95,0.18,0.42),matBarW); bar2.position.y=0.30; g.add(bar2);
+  const bar3=new THREE.Mesh(new THREE.BoxGeometry(1.97,0.09,0.44),matBarR); bar3.position.y=0.44; g.add(bar3);
+  [-0.90,0.90].forEach(x=>{const leg=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.74,0.15),matSteel);leg.position.set(x,0.37,0);g.add(leg);});
+  const glow=new THREE.PointLight(0xff2b34,0.7,4); glow.position.set(0,0.6,0.3); g.add(glow);
   return g;
 }
 function buildWall(){ // delivery truck / train car
@@ -1171,7 +1209,7 @@ function buildWall(){ // delivery truck / train car
 function buildHigh(){ // overhead sign gantry — slide under
   const g=new THREE.Group();
   const beam=new THREE.Mesh(new THREE.BoxGeometry(1.95,0.32,0.34),matSteel); beam.position.y=1.55; g.add(beam);
-  const warn=new THREE.Mesh(new THREE.BoxGeometry(1.95,0.16,0.36),matBarY); warn.position.y=1.34; g.add(warn);
+  const warn=new THREE.Mesh(new THREE.BoxGeometry(1.95,0.16,0.36),matBarR); warn.position.y=1.34; g.add(warn);
   const panel=new THREE.Mesh(new THREE.BoxGeometry(1.15,0.5,0.1),matSign); panel.position.set(0,1.95,0.12); g.add(panel);
   [-0.86,0.86].forEach(x=>{const post=new THREE.Mesh(new THREE.BoxGeometry(0.12,2.3,0.12),matSteel);post.position.set(x,1.15,0);g.add(post);});
   return g;
@@ -1220,6 +1258,7 @@ let sliding=false,slideUntil=0,trailTimer=0;
 let flyCharge=0,flying=false,flyUntil=0,flyCoinTimer=0,flyLane=1,flyAnnounced=false,flyCoolUntil=0;
 let flyNeed=22,flyMs=6000,revivedThisRun=false;
 let trSpd=1,trAccel=1,trCoinR=1,trScore=1,trSlowmo=1,bonusScore=0;   // character-trait modifiers
+let smashCfg=null,smashing=false,smashUntil=0,smashCoolUntil=0,smashCount=0;  // Arda's ability
 let slow=1,slowUntil=0,animScale=1;                                   // near-miss slow-mo
 const FLY_NEED=22, FLY_MS=6000, FLY_Y=2.4, FLY_COOL=9000;
 let lastT=performance.now();
@@ -1239,9 +1278,14 @@ function resetRun(){
   speed=cfg.start; distance=0; orbCount=0; score=0; spawnZ=-50;
   laneIdx=1; targetX=0; vy=0; grounded=true; shake=0;
   const tr=(SKINS.find(x=>x.id===save.skin)||{}).tr||{};
-  trSpd=tr.spd||1; trAccel=tr.accel||1; trCoinR=tr.coinR||1; trScore=tr.score||1; trSlowmo=tr.slowmo||1;
-  magnetLvl=save.upg.magnet; coinVal=1+save.upg.coin+(tr.coinV||0);
-  flyNeed=Math.max(8,FLY_NEED-3*save.upg.boost+(tr.flyNeed||0)); flyMs=FLY_MS+1000*save.upg.flytime;
+  const ht=(HATS.find(x=>x.id===save.hat)||{}).tr||{};   // accessory perks stack on top
+  trSpd=tr.spd||1; trAccel=tr.accel||1; trSlowmo=tr.slowmo||1;
+  trCoinR=(tr.coinR||1)*(ht.coinR||1);
+  trScore=(tr.score||1)*(ht.score||1);
+  magnetLvl=save.upg.magnet; coinVal=1+save.upg.coin+(tr.coinV||0)+(ht.coinV||0);
+  flyNeed=Math.max(6,FLY_NEED-3*save.upg.boost+(tr.flyNeed||0)+(ht.flyNeed||0));
+  flyMs=FLY_MS+1000*save.upg.flytime+(ht.flyMs||0);
+  smashCfg=tr.smash||null; smashing=false; smashUntil=0; smashCoolUntil=0; smashCount=0;
   slow=1; slowUntil=0; bonusScore=0;
   ghostScore=0; ghostPhase=0; if(ghost){ghost.group.position.set(0,0.6,2);ghost.group.visible=false;}
   shieldActive=!!save.upg.shield; shieldMesh.visible=shieldActive; invulnUntil=0;
@@ -1307,6 +1351,13 @@ function activateFly(){
   if(state!=='playing'||flying||flyCharge<flyNeed||performance.now()<flyCoolUntil) return;
   startFlight(flyMs,true);
 }
+function activateSmash(){
+  if(state!=='playing'||!smashCfg||smashing||flying) return;
+  const now=performance.now();
+  if(now<smashCoolUntil) return;
+  smashing=true; smashUntil=now+smashCfg.dur; smashCoolUntil=now+smashCfg.cool; smashCount++;
+  shake=Math.max(shake,0.3); SFX.smash(); toast('SMASH!');
+}
 addEventListener('keydown',e=>{
   if(e.repeat)return;
   const tag=(e.target&&e.target.tagName)||'';
@@ -1316,6 +1367,7 @@ addEventListener('keydown',e=>{
   else if(e.key===' '||e.key==='ArrowUp'||e.key==='w'||e.key==='W'){e.preventDefault();jump();}
   else if(e.key==='ArrowDown'||e.key==='s'||e.key==='S'){e.preventDefault();slide();}
   else if(e.key==='f'||e.key==='F'){e.preventDefault();activateFly();}
+  else if(e.key==='r'||e.key==='R'){e.preventDefault();activateSmash();}
 });
 let tx=0,ty=0,tt=0;
 renderer.domElement.addEventListener('touchstart',e=>{const t=e.changedTouches[0];tx=t.clientX;ty=t.clientY;tt=Date.now();},{passive:true});
@@ -1357,6 +1409,18 @@ function tick(now){
     speed=Math.min(cfg.max*trSpd, cfg.start*trSpd + distance*cfg.accel*trAccel);
     const dz=speed*gdt;
 
+    // SMASH: plough straight through anything in the way
+    if(smashing){
+      if(now>smashUntil){ smashing=false; toast('Smash over'); }
+      else for(let i=obstacles.length-1;i>=0;i--){
+        const o=obstacles[i];
+        if(o.position.z>-3.5){                       // shatter it just before impact
+          burst(o.position.clone(),0xff7b2e,14);
+          if(Math.abs(o.position.z)<2){ SFX.crunch(); shake=Math.max(shake,0.16); bonusScore+=8; }
+          scene.remove(o); obstacles.splice(i,1);
+        }
+      }
+    }
     for(let i=obstacles.length-1;i>=0;i--){const o=obstacles[i];o.position.z+=dz;
       if(!flying && !o.userData.passed && o.position.z>0.7 && o.position.z<2.2){
         o.userData.passed=true;
@@ -1387,7 +1451,8 @@ function tick(now){
       const fp=1+Math.sin(now*0.04)*0.4; flameL.scale.y=flameR.scale.y=fp; flameL.scale.x=flameR.scale.x=0.8+Math.sin(now*0.06)*0.2;
       if(now>flyUntil){ flying=false; jet.visible=false; vy=0; grounded=false; spawnZ=-24; invulnUntil=now+700; flyCoolUntil=now+FLY_COOL; }
     } else {
-      vy-=0.9*gdt; player.position.y+=vy*slow;
+      const fs=Math.min(3,gdt*60);          // frame-rate independent (was 144Hz-dependent)
+      vy-=0.9*gdt; player.position.y+=vy*fs;
       if(player.position.y<=0.6){player.position.y=0.6;vy=0;grounded=true;}
     }
 
@@ -1431,7 +1496,7 @@ function tick(now){
     }
 
     // collisions / shield / revive (off while flying)
-    if(!flying && now>=invulnUntil && hitCheck()){
+    if(!flying && !smashing && now>=invulnUntil && hitCheck()){
       if(shieldActive){
         shieldActive=false; shieldMesh.visible=false; invulnUntil=now+1300;
         shake=0.28; burst(player.position.clone(),0xffffff,16);
@@ -1478,7 +1543,22 @@ function toast(msg,warn){const t=document.getElementById('toast');t.textContent=
 const flyDock=document.getElementById('flyDock');
 const flyFill=document.getElementById('flyFill');
 const flyLabel=document.getElementById('flyLabel');
+function updateSmashDock(now){
+  const d=document.getElementById('smashDock');
+  if(state!=='playing'||!smashCfg){ d.className='hidden'; return; }
+  const f=document.getElementById('smashFill'), l=document.getElementById('smashLabel');
+  if(smashing){
+    d.className='active'; f.style.width=Math.max(0,(smashUntil-now)/smashCfg.dur*100)+'%'; l.textContent='SMASHING';
+  } else if(now<smashCoolUntil){
+    d.className='cooldown';
+    f.style.width=(100-Math.max(0,(smashCoolUntil-now)/smashCfg.cool*100))+'%';
+    l.textContent='Smash '+Math.ceil((smashCoolUntil-now)/1000)+'s';
+  } else {
+    d.className='ready'; f.style.width='100%'; l.textContent='Smash ready — R / tap';
+  }
+}
 function updateFlyDock(now){
+  updateSmashDock(now);
   if(state!=='playing'){ flyDock.className='hidden'; return; }
   if(flying){
     flyDock.className='active';
@@ -1502,6 +1582,7 @@ function updateFlyDock(now){
   }
 }
 flyDock.addEventListener('pointerdown',e=>{e.preventDefault();activateFly();});
+document.getElementById('smashDock').addEventListener('pointerdown',e=>{e.preventDefault();activateSmash();});
 
 function startRun(){
   if(banInfo){ showBanScreen(banInfo); return; }
@@ -1516,7 +1597,8 @@ function startRun(){
 }
 
 function endRun(){
-  state='over'; shake=0.5; flying=false; jet.visible=false; flyDock.classList.add('hidden');
+  state='over'; shake=0.5; flying=false; smashing=false; jet.visible=false;
+  flyDock.classList.add('hidden'); document.getElementById('smashDock').className='hidden';
   musicStop(); SFX.crash();
   if(ghost) ghost.group.visible=false;
   burst(player.position.clone(),0xff2e7e,26);
@@ -1531,8 +1613,7 @@ function endRun(){
     runVoid=true;                               // speed-hacked, time-warped or edited
   }
 
-  let earned=orbCount*coinVal+Math.floor(distance/50);
-  earned=Math.min(earned,2000);                 // no single run can print a fortune
+  let earned=orbCount*coinVal+Math.floor(distance/50);   // no ceiling — earn as much as you can
   if(runVoid) earned=0;
   save.coins+=earned;
   const isBest=(!runVoid && score>save.bestScore);
@@ -1641,6 +1722,7 @@ async function doSave(){
 async function openMenu(){
   state='menu';
   document.getElementById('flyDock').classList.add('hidden');
+  document.getElementById('smashDock').className='hidden';
   document.getElementById('menuCoins').textContent=save.coins;
   document.getElementById('selLevelName').textContent=(LEVELS[save.level]||LEVELS[0]).name;
   const b=await loadBoard(); renderBoard(document.getElementById('menuBoard'),b,-1);
@@ -1727,7 +1809,7 @@ function renderShop(){
       const owned=save.hats.includes(h.id), equipped=save.hat===h.id;
       const row=document.createElement('div'); row.className='item';
       row.innerHTML='<div class="swatch" style="color:#ffd23b;background:radial-gradient(circle at 35% 30%,#fff,#ffd23b)"></div>'+
-        '<div class="info"><div class="name">'+h.name+'</div><div class="desc">Accessory</div></div><div></div>';
+        '<div class="info"><div class="name">'+h.name+'</div><div class="desc">'+(h.perk||'Accessory')+'</div></div><div></div>';
       const btn=document.createElement('button'); btn.className='btn sm';
       if(equipped){btn.textContent='Equipped';btn.disabled=true;}
       else if(owned){btn.textContent='Equip';btn.classList.add('ghost');btn.addEventListener('click',()=>{save.hat=h.id;applySkin(save.skin);persist();renderShop();});}
@@ -1843,6 +1925,8 @@ const SFX={
   best:()=>[0,0.1,0.2].forEach((d,i)=>tone({f:[784,988,1318][i],type:'square',dur:0.2,vol:0.14,delay:d})),
   honk:()=>{ tone({f:233,type:'sawtooth',dur:0.28,vol:0.2}); tone({f:185,type:'sawtooth',dur:0.34,vol:0.2,delay:0.22}); },
   spook:()=>{ tone({f:190,f2:60,type:'sine',dur:1.6,vol:0.12}); noiseHit(1.4,0.06,500,120); },
+  smash:()=>{ tone({f:90,f2:40,type:'sawtooth',dur:0.5,vol:0.24}); noiseHit(0.45,0.26,900,140); },
+  crunch:()=>noiseHit(0.16,0.2,2200,300),
 };
 
 /* ---- music: a small looping synth line while you run ---- */
